@@ -1,6 +1,6 @@
-﻿# compat_scripts のスクリプトをコンパイルして .pex を作る。
+﻿# scripts のスクリプトをコンパイルして .pex を作る。
 #
-# 1) 新規スクリプト(SKSE / UI / Input / StringUtil / EquipSlot)は、compat_scripts の .psc をそのままコンパイルする。
+# 1) 新規スクリプト(SKSE / UI / Input / StringUtil / EquipSlot)は、scripts の .psc をそのままコンパイルする。
 # 2) バニラのスクリプト(Form / Game / Utility / Math / Actor / Armor / Weapon / Spell)は、バニラの .psc をコピーして、
 #    additions\<名前>.txt(自作の最小限の宣言)を末尾に足してからコンパイルする。
 #    バニラの .psc は、このリポジトリに含めない(Creation Kit 付属のものを使う)。

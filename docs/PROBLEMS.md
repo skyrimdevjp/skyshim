@@ -1,6 +1,6 @@
 # SkyUI を SKSE なしで動かす作業の問題と原因
 
-- 対象: `E:\work\work_skyrim\独自SKSE\skyshim`(以下「互換ランタイム」)
+- 対象: `E:\work\work_skyrim\独自SKSE\skyshim`
 - 目的: SKSE64 を入れずに SkyUI を動かす。計画書は `独自SKSE\SkyUI_SKSE_compat_runtime_plan_rev4.md`
 - 検証環境: Skyrim Special Edition 1.5.97、Mod Organizer 2(以下 MO2)2.5.2、MO2 のプロファイル `Default` と `start`
 - 進捗の記録: `独自SKSE\skyshim\STATUS.md`
@@ -15,7 +15,7 @@
 | ネイティブ関数 | Papyrus から呼べる、ゲーム本体側の C++ で実装された関数。SKSE はこれを追加している |
 | Address Library | ゲーム本体の関数や変数の場所を、バージョンをまたいで調べるための対応表(`version-1-5-97-0.bin` など) |
 | 仮想ファイルシステム | MO2 が、複数の MOD のファイルを 1 つの `Data` フォルダに重ねて見せる仕組み。実際のフォルダには何も書き込まない |
-| ローダー | `skyshim_loader.exe`。Skyrim を一時停止した状態で起動し、互換ランタイムの DLL を読み込ませてから再開する |
+| ローダー | `skyshim_loader.exe`。Skyrim を一時停止した状態で起動し、Skyshim の DLL を読み込ませてから再開する |
 | CommonLib | Skyrim 本体の型や関数を C++ から使うためのライブラリ(`third_party\CommonLibSSE-NG-MIT`) |
 
 ## 1. 正しい起動と確認の手順(まずここを見る)
@@ -51,7 +51,7 @@ cmd /c 'call "D:\vs2026\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1 && cmake --bu
 
 | ファイル | 内容 |
 |---|---|
-| `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | 互換ランタイムのログ。起動のたびに上書きされる |
+| `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | Skyshim のログ。起動のたびに上書きされる |
 | `独自SKSE\skyshim\build-se\loader.log` | ローダーが受け取った引数、作業フォルダ、起動する `SkyrimSE.exe` のパス |
 | `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\Logs\Script\Papyrus.0.log` | Papyrus のログ。`Unbound native function` や `error:` が出る。ログを有効にした直近の起動が `.0`、その前が `.1` |
 
@@ -141,7 +141,7 @@ return 0;
 
 **原因**
 - MO2 の MOD の有効/無効は、プロファイルごとに別々に保存される(`mod_se\profiles\<名前>\modlist.txt`)。使ったプロファイルで `0000(system)Address Library All in One` が無効(行頭が `-`)だった。
-- Address Library の `bin` が見つからないため、互換ランタイムが起動途中で止まり、Papyrus のネイティブ関数が登録されなかった。その結果、SkyUI から見ると SKSE が動いていない状態になった。
+- Address Library の `bin` が見つからないため、Skyshim が起動途中で止まり、Papyrus のネイティブ関数が登録されなかった。その結果、SkyUI から見ると SKSE が動いていない状態になった。
 - `skyrimSECK\Data\SKSE\Plugins` は実際には空。ファイルは MO2 の MOD からだけ供給される。
 
 **確認方法**
@@ -159,7 +159,7 @@ return 0;
 
 **原因(3 つが重なっていた)**
 
-1. `Utility.GetINIInt` と `Utility.GetINIFloat` が、Skyrim 1.5.97 のバニラには存在せず、SKSE が追加していた。互換ランタイムが未実装で、ゲームは「未バインドのネイティブ関数」として 0 を返していた。
+1. `Utility.GetINIInt` と `Utility.GetINIFloat` が、Skyrim 1.5.97 のバニラには存在せず、SKSE が追加していた。Skyshim が未実装で、ゲームは「未バインドのネイティブ関数」として 0 を返していた。
    - 証拠: `Papyrus.0.log` に `error: Unbound native function "GetINIInt" called` と出る。
    - SkyUI 側の判定: `SkyUI-Community\source\scripts\SKI_Main.psc` の 143〜144 行目
 
@@ -232,8 +232,8 @@ stack:
 ### 問題 6. システムメニューの項目が「$MOD CONFIGURATION」と表示される(翻訳が効かない)
 
 **症状**
-- SKSE で起動したときは「MOD設定」と表示される。互換ランタイムでは `$MOD CONFIGURATION` とキーがそのまま表示される。
-- MO2 から素の `SkyrimSE.exe`(SKSE なし、互換ランタイムなし)で起動しても、同じ表示になる。
+- SKSE で起動したときは「MOD設定」と表示される。Skyshim では `$MOD CONFIGURATION` とキーがそのまま表示される。
+- MO2 から素の `SkyrimSE.exe`(SKSE なし、Skyshim なし)で起動しても、同じ表示になる。
 
 **原因**
 - バニラのゲーム本体は、公式ファイル(`Skyrim.esm` など)の翻訳ファイルしか読まない。MOD の翻訳ファイル `Data\Interface\Translations\<プラグイン名>_<言語>.txt` を読み込む処理は、SKSE が行っていた。
@@ -328,7 +328,7 @@ const auto p = std::filesystem::path(L"Data") / L"Interface" / L"Translations" /
 |---|---|---|
 | `Utility.GetINIInt` / `GetINIFloat` | 「バニラにあるので作業不要」と記載 | 1.5.97 のバニラには無く、SKSE が追加している。実装が必要(問題 4) |
 | MOD の翻訳ファイルの読み込み | 依存として記載なし | SKSE が行っていた処理。実装が必要(問題 6) |
-| `StringUtil.Substring` の第 3 引数の既定値 | `compat_scripts\StringUtil.psc` で `len = 0` | SKSE 本来の既定値は `-1`(末尾まで)。`-1` に修正した |
+| `StringUtil.Substring` の第 3 引数の既定値 | `scripts\StringUtil.psc` で `len = 0` | SKSE 本来の既定値は `-1`(末尾まで)。`-1` に修正した |
 | 検証したゲームのバージョン | 計画書の対象は 1.7.104 | 現在の検証は 1.5.97 のみ。1.7.104(`versionlib-1-7-104-0.bin` を使う)は、実機で未確認 |
 
 ---
@@ -369,7 +369,7 @@ const auto p = std::filesystem::path(L"Data") / L"Interface" / L"Translations" /
 - `Papyrus.0.log` に未バインドのネイティブ関数は出ていない(問題 1〜8 を解消した後の状態)。
 
 **原因**
-- MCM の画面は Scaleform(Flash)の SWF でできており、ActionScript が `_global.skse` というオブジェクトを通じて SKSE の関数を呼ぶ作りになっている。互換ランタイムがこのオブジェクトを提供していなかったため、次のような呼び出しが失敗していた。
+- MCM の画面は Scaleform(Flash)の SWF でできており、ActionScript が `_global.skse` というオブジェクトを通じて SKSE の関数を呼ぶ作りになっている。Skyshim がこのオブジェクトを提供していなかったため、次のような呼び出しが失敗していた。
   - `skse.SendModEvent(...)`(SWF から Papyrus へ通知する経路。SkyUI 全体で 34 か所)
   - `skse.version.releaseIdx`(70 以上で SkyUI の拡張機能を有効にする判定)
   - `skse.plugins.InventoryInjector`(未定義でも落ちないこと)
@@ -402,7 +402,7 @@ for (auto& entry : ui->menuMap) {
 ### 問題 12. UI 関連のネイティブ関数を実装するときの設計上の注意(今後の参照用)
 
 - Scaleform(画面)への書き込みや関数呼び出しは、ゲームのメインスレッドで行う必要がある。Papyrus のネイティブ関数は別のスレッドから呼ばれることがある。
-- SKSE のタスク機能(`SKSE::GetTaskInterface`)は、SKSE 本体を経由するため、互換ランタイムでは使えない。
+- SKSE のタスク機能(`SKSE::GetTaskInterface`)は、SKSE 本体を経由するため、Skyshim では使えない。
 - そのため `src\mainthread.cpp` で、ゲームのメインループ内の `Main::Update` の呼び出し箇所(1.5.97 では ID 35565 の +0x748)を書き換え、1 フレームに 1 回タスクを実行する仕組みを作った。書き換える前に、その位置の先頭バイトが `call` 命令(`E8`)であることを確認し、違えば何もしない。
 - この位置は、1.5.97 用の既知の値を使っている。AE(1.6 以降)や 1.7.104 では位置が異なるため、フックは付けない(ログに `MAIN_THREAD_HOOK=SKIPPED`)。1.7.104 対応の際は、別途位置の特定が必要。
 - 読み取り系(`UI.GetInt` など)は、呼び出したスレッドで直接実行している。SKSE も同様の方針だが、まれに競合する可能性がある。
@@ -414,7 +414,7 @@ for (auto& entry : ui->menuMap) {
 
 **症状**
 - SKSE 起動では、MCM の左側のページ名が「一般的」と表示される。
-- 互換ランタイムでは、`$Controls`(操作方法)と `$Advanced`(高度な設定)は訳されるが、`$General` だけが `$General` のまま表示される。
+- Skyshim では、`$Controls`(操作方法)と `$Advanced`(高度な設定)は訳されるが、`$General` だけが `$General` のまま表示される。
 - 翻訳テーブルの中身を確認すると、`$General` = 一般的 が入っているように見える。
 
 **原因**
@@ -423,7 +423,7 @@ for (auto& entry : ui->menuMap) {
 - 画面側の翻訳処理は、正式な綴りと同じ綴りでしか見つけられない。
   - `$GENERAL` で検索 → 見つかる
   - `$General` や `$general` で検索 → 見つからない
-- SKSE は、公式の翻訳が読み込まれる前に MOD の翻訳を追加する。そのため MOD の綴り(`$General`)が正式な綴りになる。互換ランタイムは、公式の読み込みが終わった後に追加するため、公式の綴りが残り、SkyUI の綴りでは見つからなかった。
+- SKSE は、公式の翻訳が読み込まれる前に MOD の翻訳を追加する。そのため MOD の綴り(`$General`)が正式な綴りになる。Skyshim は、公式の読み込みが終わった後に追加するため、公式の綴りが残り、SkyUI の綴りでは見つからなかった。
 - 追加処理が「すでに同じキーがある」と判断していたため、確認用のログや `find` では見つかったように見えていた。
 
 **該当ソース**(修正後): `src\translation.cpp` の `ParseFile`
@@ -485,7 +485,7 @@ if (!result.second) result.first->second = RE::BSFixedStringW(value);
 
 **原因**
 - SkyUI は、キー割り当てを始めるときに `skse.StartRemapMode(this)` を呼ぶ。SKSE は、次に押されたキーを `this.EndRemapMode(キー番号)` に渡す。
-- 互換ランタイムでは、この関数が何もしない仮の実装だったため、`EndRemapMode` が呼ばれなかった。SkyUI は、`EndRemapMode` が呼ばれるまで入力を受け付けない(`_bRemapMode` が真の間、`handleInput` が入力を捨てる)ため、固まった。
+- Skyshim では、この関数が何もしない仮の実装だったため、`EndRemapMode` が呼ばれなかった。SkyUI は、`EndRemapMode` が呼ばれるまで入力を受け付けない(`_bRemapMode` が真の間、`handleInput` が入力を捨てる)ため、固まった。
 - SkyUI 側の該当箇所: `SkyUI-Community\source\actionscript\ModConfigPanel\ConfigPanel.as` の `initRemapMode`(635〜642 行目)、`EndRemapMode`(643〜651 行目)、`handleInput` の 372〜375 行目。
 
 **修正**
@@ -519,7 +519,7 @@ AddFn(a_view, skse, "StartRemapMode", [](FnHandler::Params& p) {
 - `src\papyrus\register.cpp` に、`Math` の 6 関数(`LeftShift`、`RightShift`、`LogicalAnd`、`LogicalOr`、`LogicalXor`、`LogicalNot`)を追加した。
 
 **同じ種類の問題が起きたときの確認**
-- `Papyrus.0.log` の `Unbound native function "<関数名>"` を、`skyrimSECK\Data\Scripts\Source` 以下の `.psc` で検索する。`SKSE additions` の記述があれば、SKSE 由来。互換ランタイムに追加する。
+- `Papyrus.0.log` の `Unbound native function "<関数名>"` を、`skyrimSECK\Data\Scripts\Source` 以下の `.psc` で検索する。`SKSE additions` の記述があれば、SKSE 由来。Skyshim に追加する。
 
 
 ---
@@ -560,7 +560,7 @@ cl
 ### 問題 17. メインメニューに入るときにゲームがクラッシュする(`EngineFixes.dll` の中)
 
 **症状**
-- 互換ランタイムのログが、すべて `PASS` のまま、最後に次の行が出てクラッシュする。
+- Skyshim のログが、すべて `PASS` のまま、最後に次の行が出てクラッシュする。
 
 ```
 EXCEPTION code=C0000005 addr=... module=...\Data\SKSE\Plugins\EngineFixes.dll +0x2EAFD
@@ -568,7 +568,7 @@ EXCEPTION code=C0000005 addr=... module=...\Data\SKSE\Plugins\EngineFixes.dll +0
 
 **原因(断定していない)**
 - `EngineFixes.dll`(SSE Engine Fixes)は、SKSE が読み込む SKSE プラグインである。ゲームフォルダに入っているプリローダー(`d3dx9_42.dll` など)によって、SKSE なしでもプロセスの中で読み込まれていた。
-- SKSE が提供する機能が無いことで失敗したのか、ゲームのメインループの呼び出し箇所を書き換える互換ランタイムのフックと衝突したのかは、特定できていない。
+- SKSE が提供する機能が無いことで失敗したのか、ゲームのメインループの呼び出し箇所を書き換える Skyshim のフックと衝突したのかは、特定できていない。
 
 **修正**
 - 次のファイルを、別のフォルダへ移動する(削除ではなく退避)。
@@ -577,7 +577,7 @@ EXCEPTION code=C0000005 addr=... module=...\Data\SKSE\Plugins\EngineFixes.dll +0
 - 結果: クラッシュしなくなった。
 
 **判断の手がかり**
-- クラッシュのログの `module=` に、互換ランタイム以外の DLL が出ていれば、その DLL(多くは SKSE プラグイン)が原因の候補になる。
+- クラッシュのログの `module=` に、Skyshim 以外の DLL が出ていれば、その DLL(多くは SKSE プラグイン)が原因の候補になる。
 - 計画書のとおり、任意の SKSE プラグインの動作は対象外としている。必要になった場合は、衝突するかどうかを別途調べる。
 
 ---
@@ -585,7 +585,7 @@ EXCEPTION code=C0000005 addr=... module=...\Data\SKSE\Plugins\EngineFixes.dll +0
 ### 問題 18. 日本語のコメントがあると、Papyrus のコンパイルで宣言が欠ける(エラーは出ない)
 
 **症状**
-- `compat_scripts` のコメントを日本語にしたあと、`build_pex.ps1` は成功と表示する。
+- `scripts` のコメントを日本語にしたあと、`build_pex.ps1` は成功と表示する。
 - ところが、できた `.pex` が小さくなり(例: `UI.pex` が 2080 → 1087 バイト、`Form.pex` が 5067 → 2338 バイト)、宣言した関数の一部が入っていない。エラーも警告も出ない。
 
 **原因**

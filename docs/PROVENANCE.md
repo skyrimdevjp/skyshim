@@ -11,10 +11,10 @@
 Local `E:\work\work_skyrim\CommonLibSSE-NG` HEAD (d61bca4d...) is AFTER the GPL boundary.
 Never copy from that working tree. Use a detached worktree at the MIT SHA:
 
-    git -C CommonLibSSE-NG worktree add ../skyui_compat/third_party/CommonLibSSE-NG-MIT e34246283a75fdd7009108476f0c646038f71f3c
+    git -C CommonLibSSE-NG worktree add ../skyshim/third_party/CommonLibSSE-NG-MIT e34246283a75fdd7009108476f0c646038f71f3c
 
 SKSE64 source is behavior reference only; no code is copied.
-compat_scripts/*.psc are original declarations (signatures only).
+scripts/*.psc are original declarations (signatures only).
 
 ## Local environment audit (2026-09-30)
 - E:\work\work_skyrim\skyrimSE\SkyrimSE.exe = **1.5.97.0** (SHA256 5666E1BD...5D12); SkyrimAE\SkyrimSE.exe also 1.5.97.0.

@@ -1,7 +1,7 @@
 # Implementation status vs rev4
 - Phase 0: DONE (docs/PROVENANCE.md; SkyrimSE.exe hash still to record)
 - Phase 1: DONE (docs/SKYUI_SKSE_SURFACE.md; corrections to rev4 listed there)
-- Phase 4/12 partial: compat_scripts/*.psc declarations written; Form/Game additions pending merge gate
+- Phase 4/12 partial: scripts/*.psc declarations written; Form/Game additions pending merge gate
 - Phase 6/7 partial: ModEventRegistry + IndexStore (engine-independent, smoke-tested)
 - Phases 2,3,5,7(inject),8-11: NOT STARTED - need SkyrimSE 1.7.104 + Address Library + RE work.
   Per STOP rules, no guessed RVAs/hook sites were written.
@@ -33,7 +33,7 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
 - src/papyrus/register.cpp: SKSE.GetVersion/Minor/Beta/Release/GetScriptVersionRelease (2.2.0, release 75) and Form.GetType
   registered via IVirtualMachine::RegisterFunction once RE::SkyrimVM impl exists (worker thread, after VM creation).
 - Log: PAPYRUS_NATIVES_REGISTERED=PASS (registration call completed; NOT yet proof scripts can call them).
-- SKI_MAIN_SKSE_CHECK NOT verified: needs SkyUI_SE.esp/bsa + compat .pex (compile compat_scripts) and a save load to see
+- SKI_MAIN_SKSE_CHECK NOT verified: needs SkyUI_SE.esp/bsa + compat .pex (compile scripts) and a save load to see
   SKI_Main not raising ERR_SKSE_*. Open risk: registration timing vs. script binding (thread-based, not a hook site).
 
 ## Phase 4 in-game check procedure (pending user action)
@@ -125,7 +125,7 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
   EnableMapMenuMouseWheel is also a stub, yet wheel zoom works in this setup (so the stub is not the cause of any visible problem).
 
 ## Finding: SKSE API surface used by SkyUI is larger than the Phase 1 census (2026-10-01)
-Method: compile all SkyUI-Community/source/scripts/*.psc against vanilla CK sources + compat_scripts/additions only
+Method: compile all SkyUI-Community/source/scripts/*.psc against vanilla CK sources + scripts/additions only
 (work dir must contain the patched Form/Game/Utility/Math/Spell psc and must be the CURRENT directory; a vanilla Form.psc in the cwd wins otherwise).
 Result: 10 of 12 scripts compile. SKI_FavoritesManager (and SKI_ConfigMenu, which depends on it) need more SKSE additions:
 - New type: EquipSlot (script class + engine-side VM type registration; used for `as EquipSlot` casts and Spell.GetEquipType()).
@@ -147,8 +147,13 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
   Actor.GetWornForm/GetEquippedObject/GetEquippedItemId/GetWornItemId/EquipItemEx/EquipItemById/UnequipItemEx, Game.IsObjectFavorited,
   Input.GetMappedControl. Item IDs are always 0 (ExtendData is a stub), EquipItemById ignores the id.
 - Open risk: the engine may not know "EquipSlot" as a VM object type (Spell.GetEquipType returns a BGSEquipSlot form); check `as EquipSlot` in game.
-- compat_scripts: added additions/{Actor,Armor,Weapon,Spell}.txt, EquipSlot.psc, Form.GetName. build_pex.ps1 now verifies that the additions are present
+- scripts: added additions/{Actor,Armor,Weapon,Spell}.txt, EquipSlot.psc, Form.GetName. build_pex.ps1 now verifies that the additions are present
   in the generated .pex and can compile all SkyUI scripts (-SkyUISource); all 12 SkyUI scripts compile with vanilla + additions.
 - BUG FIXED in the build script: (1) Japanese comments made the Papyrus compiler drop following declarations -> comment lines are stripped from the
   compile copies; (2) a vanilla Form.psc in the current directory beat the patched one -> work dir is now the temp dir (PROBLEMS.md 18-20).
   .pex files built with the previous build_pex.ps1 (commits 4e2467c .. 9b99750) may lack the additions: rebuild them and redo the clean-environment test.
+
+## Rename: compat_scripts -> scripts (2026-10-01)
+- The folder `compat_scripts` is now `scripts` (Skyrim's own folder is also called Scripts). The word "compat" came from the old project name and
+  no longer fits; documentation and comments now say "Skyshim" instead of "互換ランタイム". C++ constants kCompat* became kReported*.
+- Build the scripts with `scripts\build_pex.ps1` (see docs\BUILD.md section 8).

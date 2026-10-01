@@ -1,6 +1,6 @@
 # ビルドと動作確認の手順
 
-SkyUI を SKSE なしで動かす互換ランタイム(`skyshim.dll` と `skyshim_loader.exe`)を、
+SkyUI を SKSE なしで動かすための Skyshim(`skyshim.dll` と `skyshim_loader.exe`)を、
 Skyrim Special Edition 1.5.97 向けにビルドして動かす手順。
 問題が出たときは、`PROBLEMS.md` を参照する。
 
@@ -104,7 +104,7 @@ build-se\skyshim_loader.exe "<ゲームフォルダ>"
 
 | ファイル | 内容 |
 |---|---|
-| `Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | 互換ランタイムのログ。起動のたびに上書きされる |
+| `Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | Skyshim のログ。起動のたびに上書きされる |
 | `build-se\loader.log` | ローダーが受け取った引数、作業フォルダ、起動する `SkyrimSE.exe` のパス |
 | `Documents\My Games\Skyrim Special Edition\Logs\Script\Papyrus.0.log` | Papyrus のログ(`Skyrim.ini` の `[Papyrus]` の `bEnableLogging=1` と `bEnableTrace=1` が必要。`Logs\Script` フォルダが無いと出ないので、手で作る) |
 
@@ -121,7 +121,7 @@ SKSE_JS_INJECT=PASS wrapped N menu creators
 EVENT_SINKS_INSTALLED=PASS
 ```
 
-致命的な例外(アクセス違反など)が起きると、`EXCEPTION code=... module=... +0x...` の行が出る。`module=` が互換ランタイム以外の DLL なら、その DLL が原因の候補になる。
+致命的な例外(アクセス違反など)が起きると、`EXCEPTION code=... module=... +0x...` の行が出る。`module=` が Skyshim 以外の DLL なら、その DLL が原因の候補になる。
 
 ## 6. 動作確認の項目
 
@@ -141,15 +141,15 @@ EVENT_SINKS_INSTALLED=PASS
 - ゲームパッドのボタンによるキー割り当ては、未対応。
 - 進捗の詳細は、`STATUS.md` を参照する。
 
-## 8. 互換スクリプト(.pex)のビルド
+## 8. スクリプト(.pex)のビルド
 
-互換ランタイムが登録したネイティブ関数は、スクリプト(`.pex`)の側に宣言が無いと、Papyrus に結び付かない。
+Skyshim が登録したネイティブ関数は、スクリプト(`.pex`)の側に宣言が無いと、Papyrus に結び付かない。
 SKSE を入れていない環境では、SKSE が提供していた次の `.pex` が無いので、ここで作る。
 
 | 種類 | スクリプト | 作り方 |
 |---|---|---|
-| 新規 | `SKSE`、`UI`、`Input`、`StringUtil`、`EquipSlot` | `compat_scripts\*.psc` を、そのままコンパイルする |
-| バニラの拡張 | `Form`、`Game`、`Utility`、`Math`、`Actor`、`Armor`、`Weapon`、`Spell` | バニラの `.psc` に、`compat_scripts\additions\<名前>.txt`(自作の最小限の宣言)を足して、コンパイルする |
+| 新規 | `SKSE`、`UI`、`Input`、`StringUtil`、`EquipSlot` | `scripts\*.psc` を、そのままコンパイルする |
+| バニラの拡張 | `Form`、`Game`、`Utility`、`Math`、`Actor`、`Armor`、`Weapon`、`Spell` | バニラの `.psc` に、`scripts\additions\<名前>.txt`(自作の最小限の宣言)を足して、コンパイルする |
 
 - バニラの `.psc` は、このリポジトリに含めない。Creation Kit 付属の `Data\Source\Scripts` のものを使う。
 - SKSE が入れた完全版(`Data\Scripts\Source` の `Form.psc` など)は、SkyUI が使わない関数と SKSE の説明を含むため、使わない。
@@ -157,7 +157,7 @@ SKSE を入れていない環境では、SKSE が提供していた次の `.pex`
 実行(PowerShell):
 
 ```
-.\compat_scripts\build_pex.ps1 `
+.\scripts\build_pex.ps1 `
   -Compiler "<Creation Kit>\Papyrus Compiler\PapyrusCompiler.exe" `
   -VanillaSource "<Creation Kit のあるゲームフォルダ>\Data\Source\Scripts" `
   -Out "<出力先>" `
@@ -170,7 +170,7 @@ SKSE を入れていない環境では、SKSE が提供していた次の `.pex`
 - 追加する宣言を増やしたとき(新しいネイティブ関数を実装したとき)は、`additions\<名前>.txt` に宣言を足して、ビルドし直す。
 
 注意(詳しくは `PROBLEMS.md` の問題 18〜20):
-- **ソースのコメントは日本語だが、Papyrus のコンパイラは、日本語のコメントを正しく読めない。** `build_pex.ps1` は、コンパイル用の一時コピーから、コメントだけの行を取り除く。`compat_scripts` のファイルを、直接 `PapyrusCompiler.exe` に渡さない。
+- **ソースのコメントは日本語だが、Papyrus のコンパイラは、日本語のコメントを正しく読めない。** `build_pex.ps1` は、コンパイル用の一時コピーから、コメントだけの行を取り除く。`scripts` のファイルを、直接 `PapyrusCompiler.exe` に渡さない。
 - コンパイラは、作業フォルダにある同名の `.psc` を優先する。`build_pex.ps1` は、作業フォルダを一時フォルダにして、追加宣言付きの版が使われるようにしている。
 - `build_pex.ps1` は、日本語を含むため、BOM 付き UTF-8 で保存してある(Windows PowerShell 5.1 は、BOM が無いと、日本語を正しく読めない)。編集したあとも、BOM 付きで保存する。
 - 生成した `.pex` を、SKSE のスクリプトを一度も入れていない環境で動かす確認は、`build_pex.ps1` の修正(問題 19)のあとに、やり直す必要がある。

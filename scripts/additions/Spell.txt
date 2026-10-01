@@ -1,4 +1,4 @@
 
-; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
 ; 呪文の装備スロット(右手、左手、どちらでも、両手、声)を返す。
 EquipSlot Function GetEquipType() native

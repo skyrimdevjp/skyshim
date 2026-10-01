@@ -1,4 +1,4 @@
 
-; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
 ; 防具が使う部位のビットマスクを返す(盾は 512)。
 int Function GetSlotMask() native

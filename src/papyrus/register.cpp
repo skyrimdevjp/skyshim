@@ -16,14 +16,14 @@ namespace skyshim::papyrus
 		// Logs the first call of each native so a real script run leaves evidence (SKI_MAIN_SKSE_CHECK).
 		void Trace(const char* a_name) { static std::atomic<int> n{ 0 }; if (n++ < 20) engine::LogCall(a_name); }
 
-		// SkyUI only compares against MinSKSERelease (53); report a compatible release, not a real SKSE identity.
-		constexpr std::int32_t kCompatVersion = 2, kCompatMinor = 2, kCompatBeta = 0, kCompatRelease = 75;
+		// SkyUI only compares against MinSKSERelease (53); report a release number that satisfies it, not a real SKSE identity.
+		constexpr std::int32_t kReportedVersion = 2, kReportedMinor = 2, kReportedBeta = 0, kReportedRelease = 75;
 
-		std::int32_t GetVersion(RE::StaticFunctionTag*) { return kCompatVersion; }
-		std::int32_t GetVersionMinor(RE::StaticFunctionTag*) { return kCompatMinor; }
-		std::int32_t GetVersionBeta(RE::StaticFunctionTag*) { return kCompatBeta; }
-		std::int32_t GetVersionRelease(RE::StaticFunctionTag*) { Trace("SKSE.GetVersionRelease"); return kCompatRelease; }
-		std::int32_t GetScriptVersionRelease(RE::StaticFunctionTag*) { return kCompatRelease; }
+		std::int32_t GetVersion(RE::StaticFunctionTag*) { return kReportedVersion; }
+		std::int32_t GetVersionMinor(RE::StaticFunctionTag*) { return kReportedMinor; }
+		std::int32_t GetVersionBeta(RE::StaticFunctionTag*) { return kReportedBeta; }
+		std::int32_t GetVersionRelease(RE::StaticFunctionTag*) { Trace("SKSE.GetVersionRelease"); return kReportedRelease; }
+		std::int32_t GetScriptVersionRelease(RE::StaticFunctionTag*) { return kReportedRelease; }
 
 		// SKI_Main only tests for != 0 (scripts properly loaded); return the real form type.
 		std::int32_t FormGetType(RE::TESForm* a_self) { Trace("Form.GetType"); return a_self ? static_cast<std::int32_t>(a_self->GetFormType()) : 0; }

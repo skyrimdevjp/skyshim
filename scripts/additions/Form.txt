@@ -1,5 +1,5 @@
 
-; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
 ; 実装: src\papyrus\register.cpp、src\events\events.cpp
 
 ; フォームの種類を表す番号を返す。SkyUI は 0 かどうかだけを見る(スクリプトが正しく読み込まれているかの確認)。

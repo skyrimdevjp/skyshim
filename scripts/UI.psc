@@ -1,6 +1,6 @@
 Scriptname UI Hidden
 ; Skyshim: SkyUI が使う部分だけの宣言(署名の互換性のためだけに書いたもの)。
-; 実装は互換ランタイム側(src\papyrus\ui_api.cpp)にある。
+; 実装は Skyshim 側(src\papyrus\ui_api.cpp)にある。
 ; menuName はメニュー名(例: "HUD Menu")、target は ActionScript の変数や関数のパス(例: "_root.xxx")。
 
 ; メニューが開いているか。

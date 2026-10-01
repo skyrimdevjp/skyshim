@@ -1,5 +1,5 @@
 
-; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
 ; 実装: src\papyrus\register.cpp(Skyrim.ini、次に SkyrimPrefs.ini から検索する)
 
 ; INI の設定値を読む。名前は "設定名:セクション名" の形(例: "iSize W:Display")。見つからなければ 0。

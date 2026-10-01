@@ -1,0 +1,6 @@
+
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
+; 注意: Skyshim には、この関数の実装がまだ無い(SKI_FavoritesManager が使う)。
+
+; アイテムがお気に入りに入っているかを返す。
+bool Function IsObjectFavorited(Form akItem) global native

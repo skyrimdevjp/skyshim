@@ -1,5 +1,5 @@
 
-; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; ---- Skyshim による追加(宣言だけ。実装は Skyshim 側) ----
 ; 実装: src\papyrus\equip_api.cpp
 ; 手の番号(equipSlot): 0 = 既定、1 = 右手、2 = 左手。GetEquippedObject などの location: 0 = 左手、1 = 右手、2 = 声。
 ; アイテム ID は、ExtendData が未実装のため、常に 0(同じアイテムのどれでもよい)として扱う。
