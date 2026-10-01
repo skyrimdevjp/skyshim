@@ -170,3 +170,16 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
   returns the key code or -1. Gamepad buttons now map to SKSE codes 266-281 (table in src/events/events.cpp), so MCM key remapping accepts the gamepad
   (only while the gamepad is the active device, like SKSE). Input.GetMappedControl uses the same table. EnableMapMenuMouseWheel is a no-op on purpose.
 - Still stubs: ShowOnMap, ExtendData, ForceContainerCategorization, ExtendAlchemyCategories, ExtendForm.
+
+## ExtendData first cut (2026-10-01) - UNTESTED in game
+- User report: in the Q (favorites) menu the A/D keys did not move between groups, and items could not be added to groups.
+- Cause 1: SkyUI's InputDelegate builds details.skseKeycode from skse.GetLastKeycode(true) / GetLastControl(true); our input sink must run BEFORE the
+  menu's input handling -> the sink is now prepended to the BSInputDeviceManager event source (PrependEventSink). The earlier GetLastKeycode also
+  cleared the value on read and GetLastControl was a stub.
+- Cause 2: favorites group assignment reads assignedEntry.formId / itemId, which come from SKSE's ExtendData. Implemented in src/scaleform/extend_data.cpp:
+  vtable hook of IMenu::ProcessMessage (index 4) for Inventory/Container/Barter/Gift/Favorites menus; after the original runs, each list item's AS object gets
+  formType, formId, itemId(=0), keywords, armor partMask/weightClass, weapon fields, ammo/potion/book flags, soul gem sizes, then
+  skyui_itemDataProcessed is reset and the list's InvalidateData() is called so SkyUI reprocesses it.
+- Finding: menus call skse.ExtendData / ExtendAlchemyCategories / EnableMapMenuMouseWheel inside InitExtensions(), which the engine runs while the menu is
+  created, i.e. BEFORE our _global.skse injection, so those calls never reached us. InitExtensions must not be re-invoked (it registers callbacks), so
+  extend data is treated as always enabled for the hooked menus. ForceContainerCategorization, ExtendAlchemyCategories, MagicMenu data: still TODO.

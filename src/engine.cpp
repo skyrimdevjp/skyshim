@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "events/events.h"
 #include "mainthread.h"
+#include "scaleform/extend_data.h"
 #include "scaleform/inject.h"
 
 #include "RE/Skyrim.h"
@@ -62,6 +63,7 @@ namespace skyshim::engine
 					tr = ImportModTranslations(a_log);
 					skyshim::events::InstallSinks();  // menu-open/close and input sinks (Phase 6)
 					skyshim::scaleform::InstallMenuWrappers(a_log);
+					skyshim::scaleform::InstallExtendData(a_log);
 					a_log("EVENT_SINKS_INSTALLED=PASS (menu open/close, input)");
 				}
 			}

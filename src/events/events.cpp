@@ -201,7 +201,9 @@ namespace skyshim::events
 	void InstallSinks()
 	{
 		if (auto* ui = RE::UI::GetSingleton()) ui->AddEventSink<RE::MenuOpenCloseEvent>(&g_menuSink);
-		if (auto* input = RE::BSInputDeviceManager::GetSingleton()) input->AddEventSink(&g_inputSink);
+		// 入力は、リストの先頭に追加する。SkyUI の入力処理は、メニューへのキー入力のたびに skse.GetLastKeycode / GetLastControl を読む。
+		// そのため、「最後に押したキー」の記録が、メニューの入力処理より先に更新されている必要がある。
+		if (auto* input = RE::BSInputDeviceManager::GetSingleton()) static_cast<RE::BSTEventSource<RE::InputEvent*>*>(input)->PrependEventSink(&g_inputSink);
 	}
 }
 
