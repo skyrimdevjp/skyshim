@@ -1,0 +1,4 @@
+
+; ---- SkyUICompat additions (declarations only; implemented by the runtime) ----
+float Function GetINIFloat(string ini) global native
+int Function GetINIInt(string ini) global native

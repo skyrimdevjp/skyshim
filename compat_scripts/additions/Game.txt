@@ -1,0 +1,3 @@
+
+; ---- SkyUICompat additions (declarations only; implemented by the runtime) ----
+bool Function IsObjectFavorited(Form akItem) global native

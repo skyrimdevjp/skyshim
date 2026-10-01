@@ -140,3 +140,31 @@ EVENT_SINKS_INSTALLED=PASS
 - 任意の SKSE プラグインの動作は、対象外。
 - ゲームパッドのボタンによるキー割り当ては、未対応。
 - 進捗の詳細は、`STATUS.md` を参照する。
+
+## 8. 互換スクリプト(.pex)のビルド
+
+互換ランタイムが登録したネイティブ関数は、スクリプト(`.pex`)の側に宣言が無いと、Papyrus に結び付かない。
+SKSE を入れていない環境では、SKSE が提供していた次の `.pex` が無いので、ここで作る。
+
+| 種類 | スクリプト | 作り方 |
+|---|---|---|
+| 新規 | `SKSE`、`UI`、`Input`、`StringUtil` | `compat_scripts\*.psc` を、そのままコンパイルする |
+| バニラの拡張 | `Form`、`Game`、`Utility`、`Math` | バニラの `.psc` に、`compat_scripts\additions\<名前>.txt`(自作の最小限の宣言)を足して、コンパイルする |
+
+- バニラの `.psc` は、このリポジトリに含めない。Creation Kit 付属の `Data\Source\Scripts` のものを使う。
+- SKSE が入れた完全版(`Data\Scripts\Source` の `Form.psc` など)は、SkyUI が使わない関数と SKSE の説明を含むため、使わない。
+
+実行(PowerShell):
+
+```
+.\compat_scripts\build_pex.ps1 `
+  -Compiler "<Creation Kit>\Papyrus Compiler\PapyrusCompiler.exe" `
+  -VanillaSource "<Creation Kit のあるゲームフォルダ>\Data\Source\Scripts" `
+  -Out "<出力先>"
+```
+
+成功すると、`OK  Form.pex (...)` など 8 行が出て、出力先に 8 個の `.pex` ができる。MOD の `Scripts` フォルダに置いて使う。
+
+- 初回の確認では、`Form`、`Math`、`Utility`、`Game` の各 `.pex` に、追加した宣言(`RegisterForModEvent`、`LogicalAnd`、`GetINIInt`、`IsObjectFavorited`)が入っていた。
+- 注意: 生成した `.pex` を、SKSE のスクリプトを一度も入れていない環境で動かす確認は、まだ行っていない。
+- 追加する宣言を増やしたとき(新しいネイティブ関数を実装したとき)は、`additions\<名前>.txt` に宣言を足して、ビルドし直す。
