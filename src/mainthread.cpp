@@ -6,7 +6,7 @@
 #include <mutex>
 #include <vector>
 
-namespace skyui_compat::mainthread
+namespace skyshim::mainthread
 {
 	namespace
 	{
@@ -65,7 +65,7 @@ namespace skyui_compat::mainthread
 	}
 }
 
-namespace skyui_compat::mainthread
+namespace skyshim::mainthread
 {
 	void PostAfterFrames(int a_frames, std::function<void()> a_task)
 	{

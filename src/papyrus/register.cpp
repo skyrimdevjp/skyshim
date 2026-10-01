@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace skyui_compat::papyrus
+namespace skyshim::papyrus
 {
 	namespace
 	{

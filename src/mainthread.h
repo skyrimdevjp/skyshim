@@ -2,7 +2,7 @@
 #include <functional>
 
 // Runs tasks on the game's main thread, once per frame, from a hook on the call to Main::Update in the game loop.
-namespace skyui_compat::mainthread
+namespace skyshim::mainthread
 {
 	// Installs the per-frame hook. Verifies the call instruction first; returns false (and logs) if it does not match.
 	bool Install(void (*a_log)(const char*, ...));

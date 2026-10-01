@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace skyui_compat::papyrus
+namespace skyshim::papyrus
 {
 	namespace
 	{

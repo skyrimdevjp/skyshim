@@ -1,6 +1,6 @@
 # ビルドと動作確認の手順
 
-SkyUI を SKSE なしで動かす互換ランタイム(`skyui_compat.dll` と `skyui_compat_loader.exe`)を、
+SkyUI を SKSE なしで動かす互換ランタイム(`skyshim.dll` と `skyshim_loader.exe`)を、
 Skyrim Special Edition 1.5.97 向けにビルドして動かす手順。
 問題が出たときは、`PROBLEMS.md` を参照する。
 
@@ -49,7 +49,7 @@ cl
 ### 2.2 設定とビルド
 
 ```
-cd /d <skyui_compat のフォルダ>
+cd /d <skyshim のフォルダ>
 cmake -S . -B build-se -G Ninja -DCMAKE_BUILD_TYPE=Release ^
   -DCMAKE_TOOLCHAIN_FILE=<vcpkg のフォルダ>/scripts/buildsystems/vcpkg.cmake ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-static-md ^
@@ -57,7 +57,7 @@ cmake -S . -B build-se -G Ninja -DCMAKE_BUILD_TYPE=Release ^
 cmake --build build-se
 ```
 
-- 成果物: `build-se\skyui_compat.dll` と `build-se\skyui_compat_loader.exe`(同じフォルダに置いたまま使う)
+- 成果物: `build-se\skyshim.dll` と `build-se\skyshim_loader.exe`(同じフォルダに置いたまま使う)
 - 初回は、vcpkg が依存ライブラリをビルドするため、時間がかかる。
 - `cmake --preset se-1-5-97` は、`CMakePresets.json` の `toolchainFile` がこのリポジトリの作者の環境のパスを指しているため、そのままでは使えない。プリセットを使うなら、そのパスを書き換える。
 - ビルドの出力に `Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed` と出るのは、Windows に pthread が無いことの確認で、エラーではない。
@@ -88,7 +88,7 @@ iMaxAllocatedMemoryBytes=1048576
 
 | 項目 | 値 |
 |---|---|
-| Binary | `build-se\skyui_compat_loader.exe` のパス |
+| Binary | `build-se\skyshim_loader.exe` のパス |
 | Start in | MO2 が使うゲームフォルダ(`ModOrganizer.ini` の `gamePath` と同じ値) |
 | Arguments | 空欄 |
 
@@ -97,18 +97,18 @@ iMaxAllocatedMemoryBytes=1048576
 ### 4.2 MO2 を使わない場合
 
 ```
-build-se\skyui_compat_loader.exe "<ゲームフォルダ>"
+build-se\skyshim_loader.exe "<ゲームフォルダ>"
 ```
 
 ## 5. 確認するログ
 
 | ファイル | 内容 |
 |---|---|
-| `Documents\My Games\Skyrim Special Edition\SkyUICompat\skyui_compat.log` | 互換ランタイムのログ。起動のたびに上書きされる |
+| `Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | 互換ランタイムのログ。起動のたびに上書きされる |
 | `build-se\loader.log` | ローダーが受け取った引数、作業フォルダ、起動する `SkyrimSE.exe` のパス |
 | `Documents\My Games\Skyrim Special Edition\Logs\Script\Papyrus.0.log` | Papyrus のログ(`Skyrim.ini` の `[Papyrus]` の `bEnableLogging=1` と `bEnableTrace=1` が必要。`Logs\Script` フォルダが無いと出ないので、手で作る) |
 
-`skyui_compat.log` の正常時の主な行:
+`skyshim.log` の正常時の主な行:
 
 ```
 ADDRESS_DB_FILE=PASS ...

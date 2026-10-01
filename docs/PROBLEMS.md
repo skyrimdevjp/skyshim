@@ -1,9 +1,9 @@
 # SkyUI を SKSE なしで動かす作業の問題と原因
 
-- 対象: `E:\work\work_skyrim\独自SKSE\skyui_compat`(以下「互換ランタイム」)
+- 対象: `E:\work\work_skyrim\独自SKSE\skyshim`(以下「互換ランタイム」)
 - 目的: SKSE64 を入れずに SkyUI を動かす。計画書は `独自SKSE\SkyUI_SKSE_compat_runtime_plan_rev4.md`
 - 検証環境: Skyrim Special Edition 1.5.97、Mod Organizer 2(以下 MO2)2.5.2、MO2 のプロファイル `Default` と `start`
-- 進捗の記録: `独自SKSE\skyui_compat\STATUS.md`
+- 進捗の記録: `独自SKSE\skyshim\STATUS.md`
 - 記載日: 2026-09-30
 
 ## 0. 用語
@@ -15,7 +15,7 @@
 | ネイティブ関数 | Papyrus から呼べる、ゲーム本体側の C++ で実装された関数。SKSE はこれを追加している |
 | Address Library | ゲーム本体の関数や変数の場所を、バージョンをまたいで調べるための対応表(`version-1-5-97-0.bin` など) |
 | 仮想ファイルシステム | MO2 が、複数の MOD のファイルを 1 つの `Data` フォルダに重ねて見せる仕組み。実際のフォルダには何も書き込まない |
-| ローダー | `skyui_compat_loader.exe`。Skyrim を一時停止した状態で起動し、互換ランタイムの DLL を読み込ませてから再開する |
+| ローダー | `skyshim_loader.exe`。Skyrim を一時停止した状態で起動し、互換ランタイムの DLL を読み込ませてから再開する |
 | CommonLib | Skyrim 本体の型や関数を C++ から使うためのライブラリ(`third_party\CommonLibSSE-NG-MIT`) |
 
 ## 1. 正しい起動と確認の手順(まずここを見る)
@@ -25,11 +25,11 @@
 Visual Studio の環境を読み込んでから `cmake --build` を実行する。読み込まないと `cl.exe` などが見つからない。PowerShell での例:
 
 ```
-cd "E:\work\work_skyrim\独自SKSE\skyui_compat"
+cd "E:\work\work_skyrim\独自SKSE\skyshim"
 cmd /c 'call "D:\vs2026\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1 && cmake --build build-se 2>&1'
 ```
 
-- 成果物: `build-se\skyui_compat.dll` と `build-se\skyui_compat_loader.exe`
+- 成果物: `build-se\skyshim.dll` と `build-se\skyshim_loader.exe`
 - 出力に `vswhere.exe is not recognized` と出るが、ビルドには影響しない
 - エディタ(clang)が `RE/Skyrim.h file not found` などの赤い診断を出すが、インクルードパスが設定されていないだけで、ビルドの成否とは無関係
 
@@ -39,7 +39,7 @@ cmd /c 'call "D:\vs2026\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1 && cmake --bu
 
 | 項目 | 値 |
 |---|---|
-| Binary | `E:\work\work_skyrim\独自SKSE\skyui_compat\build-se\skyui_compat_loader.exe` |
+| Binary | `E:\work\work_skyrim\独自SKSE\skyshim\build-se\skyshim_loader.exe` |
 | Start in | `E:\work\work_skyrim\skyrimSECK`(MO2 が使うゲームフォルダ。`ModOrganizer.ini` の `gamePath` と同じ値) |
 | Arguments | 空欄 |
 
@@ -51,11 +51,11 @@ cmd /c 'call "D:\vs2026\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1 && cmake --bu
 
 | ファイル | 内容 |
 |---|---|
-| `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\SkyUICompat\skyui_compat.log` | 互換ランタイムのログ。起動のたびに上書きされる |
-| `独自SKSE\skyui_compat\build-se\loader.log` | ローダーが受け取った引数、作業フォルダ、起動する `SkyrimSE.exe` のパス |
+| `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` | 互換ランタイムのログ。起動のたびに上書きされる |
+| `独自SKSE\skyshim\build-se\loader.log` | ローダーが受け取った引数、作業フォルダ、起動する `SkyrimSE.exe` のパス |
 | `C:\Users\kaiser\Documents\My Games\Skyrim Special Edition\Logs\Script\Papyrus.0.log` | Papyrus のログ。`Unbound native function` や `error:` が出る。ログを有効にした直近の起動が `.0`、その前が `.1` |
 
-`skyui_compat.log` の正常時の行:
+`skyshim.log` の正常時の行:
 
 ```
 ADDRESS_DB_FILE=PASS ...\skyrimSECK\Data\SKSE\Plugins\version-1-5-97-0.bin
@@ -83,8 +83,8 @@ PAPYRUS_CALL Form.GetType
 ### 問題 1. MO2 から起動しても MOD が読み込まれない(Alternate Start が始まらない、SkyUI が出ない)
 
 **症状**
-- MO2 から `skyui_compat_loader` を起動すると、ゲームは起動するが、Alternate Start も SkyUI も動かない。
-- `skyui_compat.log` の `ADDRESS_DB_FILE` が `E:\work\work_skyrim\skyrimSE\...` を指している。
+- MO2 から `skyshim_loader` を起動すると、ゲームは起動するが、Alternate Start も SkyUI も動かない。
+- `skyshim.log` の `ADDRESS_DB_FILE` が `E:\work\work_skyrim\skyrimSE\...` を指している。
 
 **原因**
 - MO2 が管理するゲームフォルダは `E:\work\work_skyrim\skyrimSECK`(`ModOrganizer.ini` の `gamePath`)。
@@ -105,7 +105,7 @@ std::wstring gameDir = argc > 1 ? argv[1] : L".";
 
 **確認方法**
 - `loader.log` の `cwd=` と `exe=` が `skyrimSECK` になっている。
-- `skyui_compat.log` の `ADDRESS_DB_FILE` が `skyrimSECK` のパスになっている。
+- `skyshim.log` の `ADDRESS_DB_FILE` が `skyrimSECK` のパスになっている。
 
 ---
 
@@ -137,7 +137,7 @@ return 0;
 
 **症状**
 - SkyUI が `SKYUI ERROR CODE 1` を出す。
-- `skyui_compat.log` が `ADDRESS_DB_FILE=FAIL ...\skyrimSECK\Data\SKSE\Plugins\version-1-5-97-0.bin` で止まる。
+- `skyshim.log` が `ADDRESS_DB_FILE=FAIL ...\skyrimSECK\Data\SKSE\Plugins\version-1-5-97-0.bin` で止まる。
 
 **原因**
 - MO2 の MOD の有効/無効は、プロファイルごとに別々に保存される(`mod_se\profiles\<名前>\modlist.txt`)。使ったプロファイルで `0000(system)Address Library All in One` が無効(行頭が `-`)だった。
@@ -270,7 +270,7 @@ if (!tr && ui) {
 - 対象は `Data` にあるファイル(仮想ファイルシステム経由を含む)だけ。BSA の中にある MOD の翻訳ファイルは読まない。
 
 **確認方法**
-- `skyui_compat.log` に `TRANSLATIONS_IMPORTED=PASS files=N entries=M`(N と M が 0 でない)。
+- `skyshim.log` に `TRANSLATIONS_IMPORTED=PASS files=N entries=M`(N と M が 0 でない)。
 - システムメニューに「MOD設定」と表示される。
 
 ---
@@ -278,7 +278,7 @@ if (!tr && ui) {
 ### 問題 7. 翻訳の読み込みを追加したところ、ゲームが起動しなくなった(クラッシュ)
 
 **症状**
-- 翻訳の読み込みを追加した直後の起動で、ゲームが落ちた。`skyui_compat.log` が `INPUT_MANAGER=PASS` の行で止まっていた。
+- 翻訳の読み込みを追加した直後の起動で、ゲームが落ちた。`skyshim.log` が `INPUT_MANAGER=PASS` の行で止まっていた。
 
 **原因**
 - 最初の実装は、UI と入力の管理オブジェクトが現れた直後(ゲームの起動途中)に、翻訳テーブルを書き換えていた。この時点では Scaleform の読み込み処理がまだ作成途中で、テーブルが未完成だったと考えられる。SKSE が「読み込み処理を作った直後」に処理を割り込ませているのは、この理由と考えられる。
@@ -292,7 +292,7 @@ if (!tr && ui) {
 // Natives are registered as soon as the VM exists (scripts must not run before this).
 if (!natives && ui && input && vm) {
     natives = true;
-    const bool ok = skyui_compat::papyrus::RegisterAll(RE::SkyrimVM::GetSingleton()->impl.get());
+    const bool ok = skyshim::papyrus::RegisterAll(RE::SkyrimVM::GetSingleton()->impl.get());
     a_log("PAPYRUS_NATIVES_REGISTERED=%s", ok ? "PASS" : "FAIL");
 }
 ```
@@ -355,9 +355,9 @@ const auto p = std::filesystem::path(L"Data") / L"Interface" / L"Translations" /
 **同じ問題が起きたときの最短の確認順**
 1. `loader.log` の `cwd` と `exe` が `skyrimSECK` か(問題 1)
 2. 使うプロファイルで Address Library が有効か(問題 3)
-3. `skyui_compat.log` に `PAPYRUS_NATIVES_REGISTERED=PASS` があるか
+3. `skyshim.log` に `PAPYRUS_NATIVES_REGISTERED=PASS` があるか
 4. `Papyrus.0.log` の `Unbound native function` の一覧(未実装のネイティブ関数がここに出る)
-5. `skyui_compat.log` の `EXCEPTION` の行(クラッシュの位置)
+5. `skyshim.log` の `EXCEPTION` の行(クラッシュの位置)
 
 
 ---
@@ -390,7 +390,7 @@ for (auto& entry : ui->menuMap) {
 - 呼び出しは `src\engine.cpp` の `WaitForSingletons`。メインメニューが開いた後に 1 回だけ実行する。
 
 **確認方法**
-- `skyui_compat.log` に `SKSE_JS_INJECT=PASS wrapped N menu creators`(N は 35 前後)。
+- `skyshim.log` に `SKSE_JS_INJECT=PASS wrapped N menu creators`(N は 35 前後)。
 - 「MOD設定」を開くと、SkyUI の設定項目が表示される。
 
 **残っている制限**
@@ -451,7 +451,7 @@ if (!result.second) result.first->second = RE::BSFixedStringW(value);
 4. 翻訳テーブルの全エントリを列挙し、実際に保存されている綴りが大文字だと確認した(`TRANSLATION_DUMP_ENTRY`)。
 
 **確認方法**
-- `skyui_compat.log` に `TRANSLATION_KEY_REPLACED existing=$GENERAL=一般 new=$General=一般的` が出る。
+- `skyshim.log` に `TRANSLATION_KEY_REPLACED existing=$GENERAL=一般 new=$General=一般的` が出る。
 - MCM のページ名が「一般的」と表示される。
 
 **残っている制限**
@@ -531,7 +531,7 @@ AddFn(a_view, skse, "StartRemapMode", [](FnHandler::Params& p) {
 
 ```
 spdlog.lib(spdlog.cpp.obj) : error LNK2019: 未解決の外部シンボル __std_find_first_of_trivial_pos_1 ...
-skyui_compat.dll : fatal error LNK1120: 2 件の未解決の外部参照
+skyshim.dll : fatal error LNK1120: 2 件の未解決の外部参照
 ```
 
 **原因**

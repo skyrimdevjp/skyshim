@@ -5,7 +5,7 @@
 namespace RE { class TESForm; class GFxValue; }
 
 // Phase 6: Papyrus event registrations (ModEvent / Menu / Key) and their dispatch to the Papyrus VM.
-namespace skyui_compat::events
+namespace skyshim::events
 {
 	void RegisterModEvent(RE::TESForm* a_form, const std::string& a_event, const std::string& a_callback);
 	void UnregisterModEvent(RE::TESForm* a_form, const std::string& a_event);

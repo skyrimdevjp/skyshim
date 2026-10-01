@@ -1,4 +1,4 @@
-// skyui_compat runtime entry. Phase 2: load before Papyrus / Scaleform; Phase 3 gates start here.
+// skyshim runtime entry. Phase 2: load before Papyrus / Scaleform; Phase 3 gates start here.
 #include <windows.h>
 #include <shlobj.h>
 #include <share.h>
@@ -32,10 +32,10 @@ namespace
 	{
 		wchar_t docs[MAX_PATH]{};
 		if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, 0, docs))) return;
-		auto dir = std::filesystem::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"SkyUICompat";
+		auto dir = std::filesystem::path(docs) / L"My Games" / L"Skyrim Special Edition" / L"Skyshim";
 		std::error_code ec;
 		std::filesystem::create_directories(dir, ec);
-		g_log = _wfsopen((dir / L"skyui_compat.log").c_str(), L"w", _SH_DENYWR);
+		g_log = _wfsopen((dir / L"skyshim.log").c_str(), L"w", _SH_DENYWR);
 	}
 
 	// Crash diagnostics: log the faulting address as module+offset (fatal exception codes only).
@@ -86,9 +86,9 @@ namespace
 		sprintf_s(name, (v.b <= 5 ? "version-%u-%u-%u-%u.bin" : "versionlib-%u-%u-%u-%u.bin"), v.a, v.b, v.c, v.d);
 		auto p = gameDir / "Data" / "SKSE" / "Plugins" / name;
 		bool ok = std::filesystem::exists(p);
-		// Address Library often lives in a mod manager folder: SKYUI_COMPAT_ADDRLIB_DIR overrides.
+		// Address Library often lives in a mod manager folder: SKYSHIM_ADDRLIB_DIR overrides.
 		wchar_t ov[MAX_PATH]{};
-		if (!ok && GetEnvironmentVariableW(L"SKYUI_COMPAT_ADDRLIB_DIR", ov, MAX_PATH)) {
+		if (!ok && GetEnvironmentVariableW(L"SKYSHIM_ADDRLIB_DIR", ov, MAX_PATH)) {
 			p = std::filesystem::path(ov) / name;
 			ok = std::filesystem::exists(p);
 		}
@@ -101,7 +101,7 @@ namespace
 	{
 		std::wstring exe;
 		Ver v = ExeVersion(exe);
-		Log("skyui_compat runtime 0.1.0 (independent runtime; not SKSE)");
+		Log("skyshim runtime 0.1.0 (independent runtime; not SKSE)");
 		Log("RUNTIME_VERSION=%u.%u.%u.%u", v.a, v.b, v.c, v.d);
 		Log("RUNTIME_LOADED_BEFORE_PAPYRUS=PASS (loaded before game main; Papyrus VM not created yet)");
 		Log("RUNTIME_LOADED_BEFORE_SCALEFORM_MENU=PASS (same)");
@@ -117,9 +117,9 @@ namespace
 #endif
 		// CommonLib reads Data/SKSE/Plugins/<db> relative to the current directory.
 		SetCurrentDirectoryW(gameDir.c_str());
-		if (!skyui_compat::engine::Phase3Init(&Log)) return;
+		if (!skyshim::engine::Phase3Init(&Log)) return;
 		// Singletons are created later by the game; poll on a worker thread (main thread must not block).
-		std::thread([] { skyui_compat::engine::WaitForSingletons(&Log); }).detach();
+		std::thread([] { skyshim::engine::WaitForSingletons(&Log); }).detach();
 	}
 
 	using GetCmdLine_t = char* (*)();

@@ -1,9 +1,9 @@
 #pragma once
 
 namespace RE::BSScript { class IVirtualMachine; }
-namespace skyui_compat::papyrus { bool RegisterAll(RE::BSScript::IVirtualMachine*); bool RegisterUI(RE::BSScript::IVirtualMachine*); }
+namespace skyshim::papyrus { bool RegisterAll(RE::BSScript::IVirtualMachine*); bool RegisterUI(RE::BSScript::IVirtualMachine*); }
 
-namespace skyui_compat::engine
+namespace skyshim::engine
 {
 	using LogFn = void (*)(const char*, ...);
 

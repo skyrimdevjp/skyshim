@@ -11,7 +11,7 @@
 #include <set>
 #include <unordered_map>
 
-namespace skyui_compat::events
+namespace skyshim::events
 {
 	namespace
 	{
@@ -164,7 +164,7 @@ namespace skyui_compat::events
 	}
 }
 
-namespace skyui_compat::events
+namespace skyshim::events
 {
 	void StartRemap(const RE::GFxValue& a_target)
 	{

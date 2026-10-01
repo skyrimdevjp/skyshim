@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $startDir = Get-Location
-$work = Join-Path ([IO.Path]::GetTempPath()) ("skyui_compat_psc_" + [Guid]::NewGuid().ToString('N'))
+$work = Join-Path ([IO.Path]::GetTempPath()) ("skyshim_psc_" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $work, $Out | Out-Null
 
 try {

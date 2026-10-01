@@ -11,7 +11,7 @@
 #include <string>
 #include <utility>
 
-namespace skyui_compat::scaleform
+namespace skyshim::scaleform
 {
 	namespace
 	{

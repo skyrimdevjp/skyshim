@@ -12,19 +12,19 @@ Options: (a) supply 1.7.104 exe + Address Library; (b) develop/verify on 1.5.97 
 version-1-5-97-0.bin available), forward-port to 1.7.104 later.
 
 ## Phase 2 result (2026-09-30)
-- skyui_compat_loader.exe (CREATE_SUSPENDED + LoadLibraryW injection) + skyui_compat.dll (IAT hook on
+- skyshim_loader.exe (CREATE_SUSPENDED + LoadLibraryW injection) + skyshim.dll (IAT hook on
   `_get_narrow_winmain_command_line`, fires on the game main thread after unpack, before game init).
 - Verified by launching: 1.5.97 (E:\work\work_skyrim\skyrimSE) and 1.7.104 (H:\game\steam\...\Skyrim Special Edition)
   both log RUNTIME_LOADED_BEFORE_PAPYRUS=PASS / RUNTIME_LOADED_BEFORE_SCALEFORM_MENU=PASS.
-  (1.7.104 takes ~10-30 s before the hook fires; log: Documents\My Games\Skyrim Special Edition\SkyUICompat\skyui_compat.log)
+  (1.7.104 takes ~10-30 s before the hook fires; log: Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log)
 - Caveat: the PASS lines are asserted from hook position (before game main), not from observing the VM.
 - Phase 3 next: Address Library missing at game Data\SKSE\Plugins for both. 1.5.97 copy is in
-  mod_se\mods\0000(system)Address Library All in One\SKSE\Plugins\; set SKYUI_COMPAT_ADDRLIB_DIR to use it.
+  mod_se\mods\0000(system)Address Library All in One\SKSE\Plugins\; set SKYSHIM_ADDRLIB_DIR to use it.
   1.7.104 versionlib-1-7-104-0.bin still needed.
 
 ## Phase 3 result (2026-09-30, Skyrim 1.5.97 only)
 - Built build-se (preset se-1-5-97, CommonLibSSE MIT snapshot) via vcvars64 + `cmake --build build-se`.
-- Launched with skyui_compat_loader.exe; log shows PASS for: REL_MODULE, ADDRESS_LIBRARY, KNOWN_ID_RESOLVE,
+- Launched with skyshim_loader.exe; log shows PASS for: REL_MODULE, ADDRESS_LIBRARY, KNOWN_ID_RESOLVE,
   MENU_MANAGER (RE::UI), INPUT_MANAGER, PAPYRUS_VM_POINTER. Address Library bin is now in skyrimSE\Data\SKSE\Plugins.
 - Caveat: RUNTIME_LOADED_* remain asserted from hook position. 1.7.104 (build-ae, versionlib-1-7-104-0.bin) not yet verified.
 - Next: Phase 4 — register SKSE.GetVersion* / Form.GetType natives (SKI_MAIN_SKSE_CHECK), verifying VM registration on 1.5.97 first.
@@ -37,22 +37,22 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
   SKI_Main not raising ERR_SKSE_*. Open risk: registration timing vs. script binding (thread-based, not a hook site).
 
 ## Phase 4 in-game check procedure (pending user action)
-- natives now log `PAPYRUS_CALL SKSE.GetVersionRelease` / `Form.GetType` (first 20 calls) to skyui_compat.log.
+- natives now log `PAPYRUS_CALL SKSE.GetVersionRelease` / `Form.GetType` (first 20 calls) to skyshim.log.
 - Existing Data\Scripts\{SKSE,Form,UI,...}.pex (from the old SKSE install) already declare these natives, so the compat .pex is
   not needed for this gate; the test only needs SkyUI enabled: mod_se\mods\0001(system)SkyUI 5 2 SE\SkyUI_SE.{esp,bsa}.
-- Launch WITHOUT SKSE: build-se\skyui_compat_loader.exe "E:\work\work_skyrim\skyrimSE", enable SkyUI_SE.esp, load a save,
+- Launch WITHOUT SKSE: build-se\skyshim_loader.exe "E:\work\work_skyrim\skyrimSE", enable SkyUI_SE.esp, load a save,
   wait ~30 s. PASS = PAPYRUS_CALL lines in the log and no "SKSE64 is not running" popup from SKI_Main.
 
 ## Phase 4 DONE + MO2 integration (2026-09-30, 1.5.97, MO2 profile Default)
 - SKI_MAIN_SKSE_CHECK=PASS: no SkyUI error popup (was ERR 1/4 before; see fixes below).
-- MO2: custom executable skyui_compat_loader.exe, Start in = <MO2 game dir> (skyrimSECK), Arguments empty; Address Library mod must be
+- MO2: custom executable skyshim_loader.exe, Start in = <MO2 game dir> (skyrimSECK), Arguments empty; Address Library mod must be
   enabled in the active profile (per-profile!). Loader now waits for the game (MO2 tears down VFS otherwise); loader.log records cwd/exe.
 - Corrections to earlier assumptions (Phase 1 census):
   * Utility.GetINIInt/GetINIFloat are NOT vanilla on 1.5.97 (unbound) -> implemented (Skyrim.ini then SkyrimPrefs.ini lookup).
   * SKSE also loads per-plugin translation files (Interface\Translations\<plugin>_<lang>.txt) into the GFx translator;
     without it SkyUI shows $MOD CONFIGURATION. Implemented in src/translation.cpp (reads %LOCALAPPDATA%\Skyrim Special Edition\plugins.txt,
     only after the Main Menu is open; importing earlier crashed). Loose files only (not BSA-hosted). Result: "MOD設定" shown.
-- Crash diagnostics: vectored handler logs EXCEPTION module+offset to skyui_compat.log.
+- Crash diagnostics: vectored handler logs EXCEPTION module+offset to skyshim.log.
 - Still unbound in Papyrus log: Form.RegisterForModEvent/RegisterForMenu/RegisterForKey/SendModEvent, UI.* (Phase 5/6). MCM page empty until then.
 - Papyrus logging enabled by the user in Documents\...\Skyrim.ini ([Papyrus] bEnableLogging/bEnableTrace=1); backup Skyrim.ini.bak_skyuicompat.
 
@@ -97,7 +97,7 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
 
 ## User verification (2026-09-30, 1.5.97, MO2 Default)
 - Working: MCM (pages, options, key mapping), Favorites menu (SkyUI layout, groups), Inventory (SkyUI layout, all columns/filters the user tried),
-  Magic menu, Container menu. Papyrus log: no Unbound natives, no script errors. skyui_compat.log: no EXCEPTION.
+  Magic menu, Container menu. Papyrus log: no Unbound natives, no script errors. skyshim.log: no EXCEPTION.
 - Observation: skse.ExtendData / ForceContainerCategorization (called from ItemMenu.as lines 48-49 during SWF init) never reached the stub, which
   suggests the SWF runs them before our injection (injection happens right after the menu creator returns). ExtendData data (formType, subType,
   weaponType, armorType, material, ...) is therefore not provided; verify columns like Type/Material in Inventory/Container.
@@ -115,7 +115,7 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
   vcpkg used for the libraries: `vcvars64.bat -vcvars_ver=14.44`. With the older 14.38 toolset the link fails
   (unresolved __std_find_first_of_trivial_pos_1 in spdlog.lib).
 - Crash at the main menu was inside EngineFixes.dll (SSE Engine Fixes, a SKSE plugin loaded by its preloader without SKSE):
-  skyui_compat.log showed EXCEPTION code=C0000005 module=...\EngineFixes.dll. Removing EngineFixes.dll (and its preloader d3dx9_42.dll) fixed it.
+  skyshim.log showed EXCEPTION code=C0000005 module=...\EngineFixes.dll. Removing EngineFixes.dll (and its preloader d3dx9_42.dll) fixed it.
   Generic SKSE plugins are out of scope; whether the cause is a missing SKSE interface or a conflict with our Main::Update hook is NOT determined.
 - Alchemy (crafting) menu shows the SkyUI layout (user), although ExtendAlchemyCategories is still a stub.
 - Map menu: user confirms the SkyUI map menu works (second PC). EnableMapMenuMouseWheel / ShowOnMap are still stubs, so mouse-wheel zoom and
@@ -134,3 +134,10 @@ Result: 10 of 12 scripts compile. SKI_FavoritesManager (and SKI_ConfigMenu, whic
 None of these natives is implemented by the runtime yet. They are used when a favorites GROUP is equipped (hotkey / menu "use group"), so group
 equipping is expected to fail with "Unbound native function" (not yet tested by the user; earlier tests covered only the favorites menu/groups UI).
 The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provides (ExtendData is a stub), so Phase 9 and these natives are linked.
+
+## Rename: skyui_compat -> Skyshim (2026-10-01)
+- Project name is now **Skyshim** (a thin compatibility shim that lets SkyUI run without SKSE).
+- Renamed: CMake project/targets (skyshim.dll, skyshim_loader.exe), C++ namespace (skyshim), log folder
+  `Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` (was SkyUICompat\skyui_compat.log), env var SKYSHIM_ADDRLIB_DIR,
+  vcpkg.json name, comments and docs. Older entries in this file that mention skyui_compat were rewritten to the new names.
+- MO2: re-register the executable (Binary = build-se\skyshim_loader.exe). The loader looks for skyshim.dll next to itself.

@@ -2,7 +2,7 @@
 #include <cassert>
 int main()
 {
-	using namespace skyui_compat;
+	using namespace skyshim;
 	ModEventRegistry r;
 	r.Register("SKICP_modSelected", 1, "OnModSelect");
 	r.Register("SKICP_modSelected", 1, "OnModSelect2");  // replaces

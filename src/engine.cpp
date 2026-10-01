@@ -12,7 +12,7 @@
 #include <string>
 #include <thread>
 
-namespace skyui_compat::engine
+namespace skyshim::engine
 {
 	namespace
 	{
@@ -34,7 +34,7 @@ namespace skyui_compat::engine
 		REL::Relocation<std::uintptr_t> probe{ RELOCATION_ID(514178, 400327) };  // UI singleton pointer
 		a_log("ADDRESS_LIBRARY=PASS");
 		a_log("KNOWN_ID_RESOLVE=PASS id(UI singleton)=%llu addr=%p", 514178ull, reinterpret_cast<void*>(probe.address()));
-		skyui_compat::mainthread::Install(a_log);  // per-frame main-thread task pump (needed by UI.* natives)
+		skyshim::mainthread::Install(a_log);  // per-frame main-thread task pump (needed by UI.* natives)
 		return true;
 	}
 
@@ -51,7 +51,7 @@ namespace skyui_compat::engine
 			// Natives are registered as soon as the VM exists (scripts must not run before this).
 			if (!natives && ui && input && vm) {
 				natives = true;
-				const bool ok = skyui_compat::papyrus::RegisterAll(RE::SkyrimVM::GetSingleton()->impl.get());
+				const bool ok = skyshim::papyrus::RegisterAll(RE::SkyrimVM::GetSingleton()->impl.get());
 				a_log("PAPYRUS_NATIVES_REGISTERED=%s", ok ? "PASS" : "FAIL");
 			}
 
@@ -60,8 +60,8 @@ namespace skyui_compat::engine
 			if (!tr && ui) {
 				if (auto* u = RE::UI::GetSingleton(); u && u->IsMenuOpen(RE::MainMenu::MENU_NAME)) {
 					tr = ImportModTranslations(a_log);
-					skyui_compat::events::InstallSinks();  // menu-open/close and input sinks (Phase 6)
-					skyui_compat::scaleform::InstallMenuWrappers(a_log);
+					skyshim::events::InstallSinks();  // menu-open/close and input sinks (Phase 6)
+					skyshim::scaleform::InstallMenuWrappers(a_log);
 					a_log("EVENT_SINKS_INSTALLED=PASS (menu open/close, input)");
 				}
 			}

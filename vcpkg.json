@@ -1,5 +1,5 @@
 {
-  "name": "skyui-compat",
+  "name": "skyshim",
   "version-string": "0.1.0",
   "dependencies": [ "rsm-binary-io", "spdlog" ]
 }

@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace skyui_compat
+namespace skyshim
 {
 	// Engine-independent ModEvent registry. Dispatch to the Papyrus VM is injected.
 	struct Registration

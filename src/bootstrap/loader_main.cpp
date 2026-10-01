@@ -1,5 +1,5 @@
-// skyui_compat_loader: start SkyrimSE.exe suspended, inject skyui_compat.dll, resume.
-// usage: skyui_compat_loader.exe [<game dir>]   (default: current directory)
+// skyshim_loader: start SkyrimSE.exe suspended, inject skyshim.dll, resume.
+// usage: skyshim_loader.exe [<game dir>]   (default: current directory)
 #include <windows.h>
 #include <cstdio>
 #include <string>
@@ -26,7 +26,7 @@ int wmain(int argc, wchar_t** argv)
 	wchar_t self[MAX_PATH]{};
 	GetModuleFileNameW(nullptr, self, MAX_PATH);
 	std::wstring dllPath = self;
-	dllPath = dllPath.substr(0, dllPath.find_last_of(L"\\/") + 1) + L"skyui_compat.dll";
+	dllPath = dllPath.substr(0, dllPath.find_last_of(L"\\/") + 1) + L"skyshim.dll";
 
 	std::wstring gameDir = argc > 1 ? argv[1] : L".";
 	wchar_t full[MAX_PATH]{};

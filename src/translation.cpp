@@ -13,7 +13,7 @@
 #include <fstream>
 #include <string>
 
-namespace skyui_compat::engine
+namespace skyshim::engine
 {
 	namespace
 	{
@@ -118,7 +118,7 @@ namespace skyui_compat::engine
 	}
 }
 
-namespace skyui_compat::engine
+namespace skyshim::engine
 {
 	// Diagnostic: what the game's translation table holds for a few keys (call on the main thread, some time after import).
 	void DumpTranslations(LogFn a_log)
