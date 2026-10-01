@@ -1,3 +1,6 @@
 
-; ---- SkyUICompat additions (declarations only; implemented by the runtime) ----
+; ---- SkyUICompat による追加(宣言だけ。実装は互換ランタイム側) ----
+; 注意: 互換ランタイムには、この関数の実装がまだ無い(SKI_FavoritesManager が使う)。
+
+; アイテムがお気に入りに入っているかを返す。
 bool Function IsObjectFavorited(Form akItem) global native

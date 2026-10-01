@@ -1,4 +1,7 @@
 
-; ---- SkyUICompat additions (declarations only; implemented by the runtime) ----
+; ---- SkyUICompat による追加(宣言だけ。実装は互換ランタイム側) ----
+; 実装: src\papyrus\register.cpp(Skyrim.ini、次に SkyrimPrefs.ini から検索する)
+
+; INI の設定値を読む。名前は "設定名:セクション名" の形(例: "iSize W:Display")。見つからなければ 0。
 float Function GetINIFloat(string ini) global native
 int Function GetINIInt(string ini) global native

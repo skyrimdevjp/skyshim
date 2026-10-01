@@ -1,10 +1,20 @@
 
-; ---- SkyUICompat additions (declarations only; implemented by the runtime) ----
+; ---- SkyUICompat による追加(宣言だけ。実装は互換ランタイム側) ----
+; 実装: src\papyrus\register.cpp、src\events\events.cpp
+
+; フォームの種類を表す番号を返す。SkyUI は 0 かどうかだけを見る(スクリプトが正しく読み込まれているかの確認)。
 Int Function GetType() native
+
+; ModEvent の受け取りを登録する。イベントが送られると、callbackName の関数が呼ばれる。
 Function RegisterForModEvent(string eventName, string callbackName) native
 Function UnregisterForModEvent(string eventName) native
+; ModEvent を送る。登録した全員に、イベント名、文字列、数値、送信元が渡される。
 Function SendModEvent(string eventName, string strArg = "", float numArg = 0.0) native
+
+; メニューの開閉を受け取る登録。開くと OnMenuOpen、閉じると OnMenuClose が呼ばれる。
 Function RegisterForMenu(string menuName) native
 Function UnregisterForMenu(string menuName) native
+
+; キーの押下と解放を受け取る登録。OnKeyDown と OnKeyUp が呼ばれる。
 Function RegisterForKey(int keyCode) native
 Function UnregisterForKey(int keyCode) native
