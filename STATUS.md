@@ -163,3 +163,10 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
   (D:\work\mod_se\mods\Skyshim Scripts\Scripts). User reports it works: SkyUI starts without SKSE .pex files (A1 achieved for the features the
   runtime of that run implemented). The log of that run shows the OLD runtime ("skyui_compat runtime 0.1.0"), i.e. a DLL built before the rename and
   before the favorites equip natives, so those natives are still untested. Map location finder calls ShowOnMap/GetMappedKey/GetLastControl stubs.
+
+## Input completed (2026-10-01)
+- skse.GetLastKeycode(isKeyDown): the argument means "last key pressed (true) / released (false)", NOT "reset" (my earlier reading was wrong).
+  Tracks the last down and up key codes and control names; skse.GetLastControl(isKeyDown) returns the control name; skse.GetMappedKey(control, device, context)
+  returns the key code or -1. Gamepad buttons now map to SKSE codes 266-281 (table in src/events/events.cpp), so MCM key remapping accepts the gamepad
+  (only while the gamepad is the active device, like SKSE). Input.GetMappedControl uses the same table. EnableMapMenuMouseWheel is a no-op on purpose.
+- Still stubs: ShowOnMap, ExtendData, ForceContainerCategorization, ExtendAlchemyCategories, ExtendForm.

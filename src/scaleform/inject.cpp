@@ -107,11 +107,24 @@ namespace skyshim::scaleform
 			AddFn(a_view, skse, "StartRemapMode", [](FnHandler::Params& p) {
 				if (p.argCount > 0 && p.args[0].IsObject()) events::StartRemap(p.args[0]);
 			});
-			// skse.GetLastKeycode(reset): key code of the last key press.
+			// skse.GetLastKeycode(isKeyDown) / GetLastControl(isKeyDown): 最後に押した(真)、または離した(偽)キーの番号と操作名。
 			AddFn(a_view, skse, "GetLastKeycode", [](FnHandler::Params& p) {
 				const auto key = events::LastKeycode(p.argCount > 0 && p.args[0].IsBool() && p.args[0].GetBool());
 				if (p.retVal) p.retVal->SetNumber(static_cast<double>(key));
 			});
+			AddFn(a_view, skse, "GetLastControl", [](FnHandler::Params& p) {
+				const auto control = events::LastControl(p.argCount > 0 && p.args[0].IsBool() && p.args[0].GetBool());
+				if (p.retVal) p.retVal->SetString(control.c_str());
+			});
+			// skse.GetMappedKey(control, deviceType, contextIdx): 操作名に割り当てられたキーの番号(割り当てが無ければ -1)。
+			AddFn(a_view, skse, "GetMappedKey", [](FnHandler::Params& p) {
+				if (p.argCount < 3 || !p.retVal) return;
+				const auto key = events::MappedKey(Str(p.args[0]), static_cast<std::int32_t>(p.args[1].GetNumber()), static_cast<std::int32_t>(p.args[2].GetNumber()));
+				p.retVal->SetNumber(static_cast<double>(key));
+			});
+			// skse.EnableMapMenuMouseWheel(enable): SKSE は、マップのマウスホイールを有効にする。
+			// Skyshim では、ホイールのズームが、実装なしでも動くため、何もしない。
+			AddFn(a_view, skse, "EnableMapMenuMouseWheel", [](FnHandler::Params&) {});
 
 			// skse.RequestActivePlayerEffects(array): fills the array with the player's visible active effects.
 			// Fields are the ones SkyUI's active effects widget reads: id, duration, elapsed (+ archetype, actorValue, effectFlags, resistType for the icon).
@@ -139,8 +152,8 @@ namespace skyshim::scaleform
 				}
 			});
 
-			for (const char* name : { "GetLastControl", "GetMappedKey", "ShowOnMap",
-					 "ForceContainerCategorization", "ExtendData", "ExtendAlchemyCategories", "EnableMapMenuMouseWheel", "ExtendForm" })
+			for (const char* name : { "ShowOnMap",
+					 "ForceContainerCategorization", "ExtendData", "ExtendAlchemyCategories", "ExtendForm" })
 				AddStub(a_view, skse, name);
 
 			globals.SetMember("skse", skse);

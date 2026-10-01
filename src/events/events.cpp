@@ -24,7 +24,9 @@ namespace skyshim::events
 		// Remap mode (MCM key mapping) and last pressed key. Guarded by g_mutex.
 		std::shared_ptr<RE::GFxValue>         g_remapTarget;
 		std::chrono::steady_clock::time_point g_remapStart;
-		std::int32_t                          g_lastKey = 0;
+		// 最後に押した、または離したキーの番号と操作名(SkyUI は skse.GetLastKeycode / GetLastControl で読む)。
+		std::int32_t g_lastKeyDown = 0, g_lastKeyUp = 0;
+		std::string  g_lastControlDown, g_lastControlUp;
 
 		RE::BSScript::IVirtualMachine* VM()
 		{
@@ -47,26 +49,58 @@ namespace skyshim::events
 			if (auto* vm = VM()) vm->SendEvent(a_handle, RE::BSFixedString(a_function.c_str()), RE::MakeFunctionArguments(std::forward<Args>(a_args)...));
 		}
 
-		// Device offsets follow the SKSE key-code convention: keyboard 0-255, mouse 256+.
-		std::int32_t KeyCode(const RE::ButtonEvent* a_button)
+		// SKSE のキー番号: キーボード 0〜255、マウス 256〜265(ボタンとホイール)、ゲームパッド 266〜281。
+		constexpr std::int32_t kMouseOffset = 256, kGamepadOffset = 266, kMaxKeycode = 282;
+		// ゲームパッドのボタン(XInput のビットマスク)を、番号の順に並べた表(LT と RT は、0x9 と 0xA)。
+		constexpr std::uint32_t kPadMasks[16] = { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
+			0x0100, 0x0200, 0x1000, 0x2000, 0x4000, 0x8000, 0x0009, 0x000A };
+
+		std::int32_t KeycodeOf(RE::INPUT_DEVICE a_device, std::uint32_t a_id)
 		{
-			const auto id = static_cast<std::int32_t>(a_button->GetIDCode());
-			switch (a_button->GetDevice()) {
-			case RE::INPUT_DEVICE::kKeyboard: return id;
-			case RE::INPUT_DEVICE::kMouse:    return 256 + id;
-			default:                          return -1;  // gamepad: not needed by SkyUI yet
+			switch (a_device) {
+			case RE::INPUT_DEVICE::kKeyboard: return a_id < 256 ? static_cast<std::int32_t>(a_id) : -1;
+			case RE::INPUT_DEVICE::kMouse:    return a_id < 10 ? kMouseOffset + static_cast<std::int32_t>(a_id) : -1;
+			case RE::INPUT_DEVICE::kGamepad:
+				for (std::int32_t i = 0; i < 16; ++i)
+					if (kPadMasks[i] == a_id) return kGamepadOffset + i;
+				return -1;
+			default: return -1;
 			}
 		}
 
-		// Records the key and, if remap mode is waiting, delivers it. Ignores presses right after StartRemapMode so the key that
-		// opened the dialog (Enter / mouse click) is not taken as the new binding.
-		void OnKeyDownForRemap(std::int32_t a_key)
+		// 逆変換(キー番号から、デバイスと ID を求める)。変換できなければ false。
+		bool DeviceAndId(std::int32_t a_keycode, RE::INPUT_DEVICE& a_device, std::uint32_t& a_id)
+		{
+			if (a_keycode < 0 || a_keycode >= kMaxKeycode) return false;
+			if (a_keycode < kMouseOffset) {
+				a_device = RE::INPUT_DEVICE::kKeyboard;
+				a_id = static_cast<std::uint32_t>(a_keycode);
+			} else if (a_keycode < kGamepadOffset) {
+				a_device = RE::INPUT_DEVICE::kMouse;
+				a_id = static_cast<std::uint32_t>(a_keycode - kMouseOffset);
+			} else {
+				a_device = RE::INPUT_DEVICE::kGamepad;
+				a_id = kPadMasks[a_keycode - kGamepadOffset];
+			}
+			return true;
+		}
+
+		std::int32_t KeyCode(const RE::ButtonEvent* a_button) { return KeycodeOf(a_button->GetDevice(), a_button->GetIDCode()); }
+
+		// 押されたキーを記録し、割り当て待ちなら、そのキーを渡す。割り当てを始めた直後の入力は無視する
+		// (割り当てを開いた Enter やクリックを、割り当て先と取り違えないため)。
+		void OnKeyDownForRemap(std::int32_t a_key, bool a_isGamepad, const std::string& a_control)
 		{
 			std::shared_ptr<RE::GFxValue> target;
 			{
 				std::lock_guard l(g_mutex);
-				g_lastKey = a_key;
-				if (g_remapTarget && std::chrono::steady_clock::now() - g_remapStart > std::chrono::milliseconds(250)) target = std::move(g_remapTarget);
+				g_lastKeyDown = a_key;
+				g_lastControlDown = a_control;
+				// SKSE と同じく、ゲームパッドを使っている間は、ゲームパッドの入力だけを、そうでなければ、キーボードとマウスの入力だけを受け取る。
+				auto* devices = RE::BSInputDeviceManager::GetSingleton();
+				const bool padMode = devices && devices->IsGamepadEnabled();
+				if (g_remapTarget && padMode == a_isGamepad && std::chrono::steady_clock::now() - g_remapStart > std::chrono::milliseconds(250))
+					target = std::move(g_remapTarget);
 			}
 			if (target) {
 				mainthread::Post([target, a_key] {
@@ -101,7 +135,14 @@ namespace skyshim::events
 					if (!button || !(button->IsDown() || button->IsUp())) continue;
 					const auto key = KeyCode(button);
 					if (key < 0) continue;
-					if (button->IsDown()) OnKeyDownForRemap(key);
+					const std::string control = button->QUserEvent().c_str() ? button->QUserEvent().c_str() : "";
+					if (button->IsDown()) {
+						OnKeyDownForRemap(key, button->GetDevice() == RE::INPUT_DEVICE::kGamepad, control);
+					} else {
+						std::lock_guard l(g_mutex);
+						g_lastKeyUp = key;
+						g_lastControlUp = control;
+					}
 					std::set<std::uint64_t> targets;
 					{
 						std::lock_guard l(g_mutex);
@@ -173,11 +214,38 @@ namespace skyshim::events
 		g_remapStart = std::chrono::steady_clock::now();
 	}
 
-	std::int32_t LastKeycode(bool a_reset)
+	// 最後に押した(a_isDown が真)、または離したキーの番号。
+	std::int32_t LastKeycode(bool a_isDown)
 	{
 		std::lock_guard l(g_mutex);
-		const auto k = g_lastKey;
-		if (a_reset) g_lastKey = 0;
-		return k;
+		return a_isDown ? g_lastKeyDown : g_lastKeyUp;
+	}
+
+	// 最後に押した、または離したキーの操作名(例: "Jump")。
+	std::string LastControl(bool a_isDown)
+	{
+		std::lock_guard l(g_mutex);
+		return a_isDown ? g_lastControlDown : g_lastControlUp;
+	}
+
+	// 操作名に割り当てられているキーの番号。割り当てが無ければ -1。
+	// a_device: 0 = キーボード、1 = マウス、2 = ゲームパッド。a_context: 入力の場面(0 = ゲームプレイ)。
+	std::int32_t MappedKey(const std::string& a_control, std::int32_t a_device, std::int32_t a_context)
+	{
+		auto* map = RE::ControlMap::GetSingleton();
+		if (!map || a_device < 0 || a_device > 2 || a_context < 0 || a_context >= static_cast<std::int32_t>(RE::UserEvents::INPUT_CONTEXT_ID::kTotal)) return -1;
+		const auto device = static_cast<RE::INPUT_DEVICE>(a_device);
+		const auto id = map->GetMappedKey(a_control, device, static_cast<RE::UserEvents::INPUT_CONTEXT_ID>(a_context));
+		return id == 0xFF ? -1 : KeycodeOf(device, id);
+	}
+
+	// キー番号に割り当てられている操作名(ゲームプレイ時)。割り当てが無ければ空。
+	std::string MappedControl(std::int32_t a_keycode)
+	{
+		auto* map = RE::ControlMap::GetSingleton();
+		RE::INPUT_DEVICE device{};
+		std::uint32_t    id = 0;
+		if (!map || !DeviceAndId(a_keycode, device, id)) return {};
+		return std::string(map->GetUserEventName(id, device, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay));
 	}
 }

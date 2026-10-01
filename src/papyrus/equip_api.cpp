@@ -2,10 +2,13 @@
 // (SKI_FavoritesManager が使う: Form.GetName、Weapon.GetWeaponType、Armor.GetSlotMask、Spell.GetEquipType、
 //  Actor の装備まわり、Game.IsObjectFavorited、Input.GetMappedControl)
 //
+// 入力: Input.GetMappedControl は、キー番号から操作名を求める(変換表は events.cpp)。
+//
 // アイテム ID(itemId)について: SKSE では ExtendData がアイテムごとの固有 ID を割り当てる。
 // Skyshim の ExtendData は未実装なので、SkyUI は常に itemId = 0(「同じアイテムのどれでもよい」)を渡す。
 // そのため GetEquippedItemId / GetWornItemId は常に 0 を返し、EquipItemById は itemId を使わずに装備する。
 #include "../engine.h"
+#include "../events/events.h"
 
 #include "RE/Skyrim.h"
 
@@ -121,23 +124,11 @@ namespace skyshim::papyrus
 			return false;
 		}
 
-		// キー番号に割り当てられている操作(ゲームプレイ時)の名前を返す。割り当てが無ければ空。
+		// キー番号に割り当てられている操作(ゲームプレイ時)の名前を返す。割り当てが無ければ空(変換は events.cpp)。
 		// キー番号: キーボード 0〜255、マウス 256〜265、ゲームパッド 266〜
 		std::string InputGetMappedControl(RE::StaticFunctionTag*, std::int32_t a_key)
 		{
-			auto* map = RE::ControlMap::GetSingleton();
-			if (!map || a_key < 0) return {};
-			RE::INPUT_DEVICE device = RE::INPUT_DEVICE::kKeyboard;
-			std::uint32_t    id = static_cast<std::uint32_t>(a_key);
-			if (a_key >= 266) {
-				device = RE::INPUT_DEVICE::kGamepad;
-				id = static_cast<std::uint32_t>(a_key - 266);
-			} else if (a_key >= 256) {
-				device = RE::INPUT_DEVICE::kMouse;
-				id = static_cast<std::uint32_t>(a_key - 256);
-			}
-			const auto name = map->GetUserEventName(id, device, RE::UserEvents::INPUT_CONTEXT_ID::kGameplay);
-			return std::string(name);
+			return events::MappedControl(a_key);
 		}
 	}
 
