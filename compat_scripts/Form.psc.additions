@@ -1,0 +1,15 @@
+; SkyUICompat: ADDITIONS ONLY for Form.psc (SkyUI-used SKSE members).
+; NOT compilable alone. Phase 12 gate: merge into the vanilla Form.psc at build
+; time (do not redistribute vanilla Form.psc), or verify build-only declaration.
+;
+; int Function GetType() native
+; Function RegisterForModEvent(string eventName, string callbackName) native
+; Function UnregisterForModEvent(string eventName) native
+; Function SendModEvent(string eventName, string strArg = "", float numArg = 0.0) native
+; Function RegisterForMenu(string menuName) native
+; Function UnregisterForMenu(string menuName) native
+; Function RegisterForKey(int keyCode) native
+; Function UnregisterForKey(int keyCode) native
+;
+; Game.psc addition (SKI_FavoritesManager):
+; bool Function IsObjectFavorited(Form akItem) global native
