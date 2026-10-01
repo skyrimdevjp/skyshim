@@ -123,3 +123,14 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
 - User check (second PC): Barter works; map mouse-wheel zoom works; location finder marks the selected icon but the map does NOT move to it
   (ShowOnMap is still a stub: skse.ShowOnMap(index) should centre the map camera on mapMarkers[index]; no verified engine call known yet).
   EnableMapMenuMouseWheel is also a stub, yet wheel zoom works in this setup (so the stub is not the cause of any visible problem).
+
+## Finding: SKSE API surface used by SkyUI is larger than the Phase 1 census (2026-10-01)
+Method: compile all SkyUI-Community/source/scripts/*.psc against vanilla CK sources + compat_scripts/additions only
+(work dir must contain the patched Form/Game/Utility/Math/Spell psc and must be the CURRENT directory; a vanilla Form.psc in the cwd wins otherwise).
+Result: 10 of 12 scripts compile. SKI_FavoritesManager (and SKI_ConfigMenu, which depends on it) need more SKSE additions:
+- New type: EquipSlot (script class + engine-side VM type registration; used for `as EquipSlot` casts and Spell.GetEquipType()).
+- Spell.GetEquipType(); Weapon.GetWeaponType(); Armor.GetSlotMask(); Form.GetName().
+- Actor.GetWornForm(int), GetEquippedObject(int), EquipItemEx(...), UnequipItemEx(...), EquipItemById(...), GetEquippedItemId(int), GetWornItemId(int).
+None of these natives is implemented by the runtime yet. They are used when a favorites GROUP is equipped (hotkey / menu "use group"), so group
+equipping is expected to fail with "Unbound native function" (not yet tested by the user; earlier tests covered only the favorites menu/groups UI).
+The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provides (ExtendData is a stub), so Phase 9 and these natives are linked.
