@@ -157,3 +157,9 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
 - The folder `compat_scripts` is now `scripts` (Skyrim's own folder is also called Scripts). The word "compat" came from the old project name and
   no longer fits; documentation and comments now say "Skyshim" instead of "互換ランタイム". C++ constants kCompat* became kReported*.
 - Build the scripts with `scripts\build_pex.ps1` (see docs\BUILD.md section 8).
+
+## Clean environment verification (2026-10-01, second PC)
+- Game folder D:\work\skyrimSEFix with no SKSE scripts; Skyshim Scripts MOD built by scripts\build_pex.ps1 (13 .pex, additions verified) in MO2
+  (D:\work\mod_se\mods\Skyshim Scripts\Scripts). User reports it works: SkyUI starts without SKSE .pex files (A1 achieved for the features the
+  runtime of that run implemented). The log of that run shows the OLD runtime ("skyui_compat runtime 0.1.0"), i.e. a DLL built before the rename and
+  before the favorites equip natives, so those natives are still untested. Map location finder calls ShowOnMap/GetMappedKey/GetLastControl stubs.
