@@ -109,3 +109,17 @@ version-1-5-97-0.bin available), forward-port to 1.7.104 later.
   magnitude, effectFlags, archetype, actorValue, resistType; skips kInactive/kDispelled/kHideInUI). Verified by the user: HUD active effects widget works.
 - Remaining stubs: GetLastControl, GetMappedKey (unused by current SkyUI), ShowOnMap, EnableMapMenuMouseWheel, ForceContainerCategorization,
   ExtendData, ExtendAlchemyCategories, ExtendForm.
+
+## Second PC verification (2026-10-01, Skyrim 1.5.97, game dir D:\work\skyrimSEFix)
+- Build on a second PC works with VS 2022 (toolset 14.44), vcpkg (spdlog, rsm-binary-io), Ninja. IMPORTANT: use the SAME MSVC toolset as the one
+  vcpkg used for the libraries: `vcvars64.bat -vcvars_ver=14.44`. With the older 14.38 toolset the link fails
+  (unresolved __std_find_first_of_trivial_pos_1 in spdlog.lib).
+- Crash at the main menu was inside EngineFixes.dll (SSE Engine Fixes, a SKSE plugin loaded by its preloader without SKSE):
+  skyui_compat.log showed EXCEPTION code=C0000005 module=...\EngineFixes.dll. Removing EngineFixes.dll (and its preloader d3dx9_42.dll) fixed it.
+  Generic SKSE plugins are out of scope; whether the cause is a missing SKSE interface or a conflict with our Main::Update hook is NOT determined.
+- Alchemy (crafting) menu shows the SkyUI layout (user), although ExtendAlchemyCategories is still a stub.
+- Map menu: user confirms the SkyUI map menu works (second PC). EnableMapMenuMouseWheel / ShowOnMap are still stubs, so mouse-wheel zoom and
+  "show on map" from the location finder were not separately verified.
+- User check (second PC): Barter works; map mouse-wheel zoom works; location finder marks the selected icon but the map does NOT move to it
+  (ShowOnMap is still a stub: skse.ShowOnMap(index) should centre the map camera on mapMarkers[index]; no verified engine call known yet).
+  EnableMapMenuMouseWheel is also a stub, yet wheel zoom works in this setup (so the stub is not the cause of any visible problem).
