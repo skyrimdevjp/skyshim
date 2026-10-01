@@ -104,6 +104,6 @@ namespace skyshim::papyrus
 		a_vm->RegisterFunction("LogicalNot", "Math", MathLogicalNot);
 		a_vm->RegisterFunction("GetLength", "StringUtil", StrGetLength);
 		a_vm->RegisterFunction("Substring", "StringUtil", StrSubstring);
-		return RegisterUI(a_vm);
+		return RegisterUI(a_vm) && RegisterEquip(a_vm);
 	}
 }

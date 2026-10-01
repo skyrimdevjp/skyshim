@@ -18,3 +18,6 @@ Function UnregisterForMenu(string menuName) native
 ; キーの押下と解放を受け取る登録。OnKeyDown と OnKeyUp が呼ばれる。
 Function RegisterForKey(int keyCode) native
 Function UnregisterForKey(int keyCode) native
+
+; フォームの名前を返す(表示名があれば、それ)。
+string Function GetName() native

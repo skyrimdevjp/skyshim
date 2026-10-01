@@ -1,7 +1,7 @@
 #pragma once
 
 namespace RE::BSScript { class IVirtualMachine; }
-namespace skyshim::papyrus { bool RegisterAll(RE::BSScript::IVirtualMachine*); bool RegisterUI(RE::BSScript::IVirtualMachine*); }
+namespace skyshim::papyrus { bool RegisterAll(RE::BSScript::IVirtualMachine*); bool RegisterUI(RE::BSScript::IVirtualMachine*); bool RegisterEquip(RE::BSScript::IVirtualMachine*); }
 
 namespace skyshim::engine
 {

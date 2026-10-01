@@ -1,0 +1,19 @@
+
+; ---- Skyshim による追加(宣言だけ。実装は互換ランタイム側) ----
+; 実装: src\papyrus\equip_api.cpp
+; 手の番号(equipSlot): 0 = 既定、1 = 右手、2 = 左手。GetEquippedObject などの location: 0 = 左手、1 = 右手、2 = 声。
+; アイテム ID は、ExtendData が未実装のため、常に 0(同じアイテムのどれでもよい)として扱う。
+
+; 防具の部位マスクに装備している防具を返す。
+Form Function GetWornForm(int slotMask) native
+; 手や声に装備しているものを返す。
+Form Function GetEquippedObject(int location) native
+; 装備しているものの固有 ID(現在は常に 0)。
+int Function GetEquippedItemId(int location) native
+int Function GetWornItemId(int slotMask) native
+
+; アイテムを装備する。preventUnequip を真にすると、あとから外されにくくする。equipSound は、装備の音を出すか。
+Function EquipItemEx(Form item, int equipSlot = 0, bool preventUnequip = false, bool equipSound = true) native
+Function EquipItemById(Form item, int itemId, int equipSlot = 0, bool preventUnequip = false, bool equipSound = true) native
+; アイテムを外す。
+Function UnequipItemEx(Form item, int equipSlot = 0, bool preventEquip = false) native
