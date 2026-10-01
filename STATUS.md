@@ -141,3 +141,14 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
   `Documents\My Games\Skyrim Special Edition\Skyshim\skyshim.log` (was SkyUICompat\skyui_compat.log), env var SKYSHIM_ADDRLIB_DIR,
   vcpkg.json name, comments and docs. Older entries in this file that mention skyui_compat were rewritten to the new names.
 - MO2: re-register the executable (Binary = build-se\skyshim_loader.exe). The loader looks for skyshim.dll next to itself.
+
+## Favorites equip natives + script build fixes (2026-10-01)
+- Implemented in src/papyrus/equip_api.cpp (UNTESTED in game): Form.GetName, Weapon.GetWeaponType, Armor.GetSlotMask, Spell.GetEquipType,
+  Actor.GetWornForm/GetEquippedObject/GetEquippedItemId/GetWornItemId/EquipItemEx/EquipItemById/UnequipItemEx, Game.IsObjectFavorited,
+  Input.GetMappedControl. Item IDs are always 0 (ExtendData is a stub), EquipItemById ignores the id.
+- Open risk: the engine may not know "EquipSlot" as a VM object type (Spell.GetEquipType returns a BGSEquipSlot form); check `as EquipSlot` in game.
+- compat_scripts: added additions/{Actor,Armor,Weapon,Spell}.txt, EquipSlot.psc, Form.GetName. build_pex.ps1 now verifies that the additions are present
+  in the generated .pex and can compile all SkyUI scripts (-SkyUISource); all 12 SkyUI scripts compile with vanilla + additions.
+- BUG FIXED in the build script: (1) Japanese comments made the Papyrus compiler drop following declarations -> comment lines are stripped from the
+  compile copies; (2) a vanilla Form.psc in the current directory beat the patched one -> work dir is now the temp dir (PROBLEMS.md 18-20).
+  .pex files built with the previous build_pex.ps1 (commits 4e2467c .. 9b99750) may lack the additions: rebuild them and redo the clean-environment test.

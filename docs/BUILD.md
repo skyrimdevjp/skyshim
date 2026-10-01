@@ -148,8 +148,8 @@ SKSE を入れていない環境では、SKSE が提供していた次の `.pex`
 
 | 種類 | スクリプト | 作り方 |
 |---|---|---|
-| 新規 | `SKSE`、`UI`、`Input`、`StringUtil` | `compat_scripts\*.psc` を、そのままコンパイルする |
-| バニラの拡張 | `Form`、`Game`、`Utility`、`Math` | バニラの `.psc` に、`compat_scripts\additions\<名前>.txt`(自作の最小限の宣言)を足して、コンパイルする |
+| 新規 | `SKSE`、`UI`、`Input`、`StringUtil`、`EquipSlot` | `compat_scripts\*.psc` を、そのままコンパイルする |
+| バニラの拡張 | `Form`、`Game`、`Utility`、`Math`、`Actor`、`Armor`、`Weapon`、`Spell` | バニラの `.psc` に、`compat_scripts\additions\<名前>.txt`(自作の最小限の宣言)を足して、コンパイルする |
 
 - バニラの `.psc` は、このリポジトリに含めない。Creation Kit 付属の `Data\Source\Scripts` のものを使う。
 - SKSE が入れた完全版(`Data\Scripts\Source` の `Form.psc` など)は、SkyUI が使わない関数と SKSE の説明を含むため、使わない。
@@ -160,11 +160,17 @@ SKSE を入れていない環境では、SKSE が提供していた次の `.pex`
 .\compat_scripts\build_pex.ps1 `
   -Compiler "<Creation Kit>\Papyrus Compiler\PapyrusCompiler.exe" `
   -VanillaSource "<Creation Kit のあるゲームフォルダ>\Data\Source\Scripts" `
-  -Out "<出力先>"
+  -Out "<出力先>" `
+  -SkyUISource "<SkyUI-Community>\source\scripts"
 ```
 
-成功すると、`OK  Form.pex (...)` など 8 行が出て、出力先に 8 個の `.pex` ができる。MOD の `Scripts` フォルダに置いて使う。
-
-- 初回の確認では、`Form`、`Math`、`Utility`、`Game` の各 `.pex` に、追加した宣言(`RegisterForModEvent`、`LogicalAnd`、`GetINIInt`、`IsObjectFavorited`)が入っていた。
-- 注意: 生成した `.pex` を、SKSE のスクリプトを一度も入れていない環境で動かす確認は、まだ行っていない。
+- `-SkyUISource` は省略できる。指定すると、SkyUI の全スクリプトを、この追加宣言だけでコンパイルして、足りない SKSE の関数が無いかを確認する。
+- 成功すると、`OK  Form.pex (...)` など 13 行と、「追加した宣言は、すべて .pex に入っています。」が出る。出力先の `.pex` を、MOD の `Scripts` フォルダに置いて使う。
+- スクリプトは、できた `.pex` に、`additions` の宣言が入っているかを、自分で検証する。入っていなければ、エラーで止まる。
 - 追加する宣言を増やしたとき(新しいネイティブ関数を実装したとき)は、`additions\<名前>.txt` に宣言を足して、ビルドし直す。
+
+注意(詳しくは `PROBLEMS.md` の問題 18〜20):
+- **ソースのコメントは日本語だが、Papyrus のコンパイラは、日本語のコメントを正しく読めない。** `build_pex.ps1` は、コンパイル用の一時コピーから、コメントだけの行を取り除く。`compat_scripts` のファイルを、直接 `PapyrusCompiler.exe` に渡さない。
+- コンパイラは、作業フォルダにある同名の `.psc` を優先する。`build_pex.ps1` は、作業フォルダを一時フォルダにして、追加宣言付きの版が使われるようにしている。
+- `build_pex.ps1` は、日本語を含むため、BOM 付き UTF-8 で保存してある(Windows PowerShell 5.1 は、BOM が無いと、日本語を正しく読めない)。編集したあとも、BOM 付きで保存する。
+- 生成した `.pex` を、SKSE のスクリプトを一度も入れていない環境で動かす確認は、`build_pex.ps1` の修正(問題 19)のあとに、やり直す必要がある。
