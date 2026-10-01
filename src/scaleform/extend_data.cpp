@@ -38,6 +38,43 @@ namespace skyshim::scaleform
 			a_obj.SetMember("keywords", keywords);
 		}
 
+		// 効果の設定(流派、必要な技能、種類など)を、項目に足す。
+		void AddEffectSetting(RE::GFxValue& a_obj, const RE::EffectSetting* a_mgef)
+		{
+			if (!a_mgef) return;
+			const auto& d = a_mgef->data;
+			const auto school = static_cast<double>(static_cast<std::int32_t>(d.associatedSkill));
+			SetNumber(a_obj, "subType", school);  // 旧名(SkyUI が school へ読み替える)
+			SetNumber(a_obj, "school", school);
+			SetNumber(a_obj, "skillLevel", static_cast<double>(d.minimumSkill));
+			SetNumber(a_obj, "effectFlags", static_cast<double>(d.flags.underlying()));
+			SetNumber(a_obj, "archetype", static_cast<double>(static_cast<std::int32_t>(d.archetype)));
+			SetNumber(a_obj, "deliveryType", static_cast<double>(static_cast<std::int32_t>(d.delivery)));
+			SetNumber(a_obj, "actorValue", static_cast<double>(static_cast<std::int32_t>(d.primaryAV)));
+			SetNumber(a_obj, "castType", static_cast<double>(static_cast<std::int32_t>(d.castingType)));
+			SetNumber(a_obj, "magicType", static_cast<double>(static_cast<std::int32_t>(d.resistVariable)));  // 旧名(SkyUI が resistance へ読み替える)
+		}
+
+		// 魔法に関するフォーム(呪文、巻物、ポーション、材料、効果)の項目を足す。SKSE の MagicItemData に相当する。
+		void AddMagicFields(RE::GFxValue& a_obj, RE::TESForm* a_form)
+		{
+			if (auto* mgef = a_form->As<RE::EffectSetting>()) {
+				AddEffectSetting(a_obj, mgef);
+			} else if (auto* magic = a_form->As<RE::MagicItem>()) {
+				// 最も影響の大きい効果から、効果量などを取る。
+				if (const auto* effect = magic->GetCostliestEffectItem(static_cast<RE::MagicSystem::Delivery>(5), false)) {
+					SetNumber(a_obj, "magnitude", effect->effectItem.magnitude);
+					SetNumber(a_obj, "duration", static_cast<double>(effect->effectItem.duration));
+					SetNumber(a_obj, "area", static_cast<double>(effect->effectItem.area));
+					AddEffectSetting(a_obj, effect->baseEffect);
+				}
+				if (auto* spell = a_form->As<RE::SpellItem>()) {
+					SetNumber(a_obj, "spellType", static_cast<double>(static_cast<std::int32_t>(spell->GetSpellType())));
+					if (auto* slot = spell->GetEquipSlot()) SetNumber(a_obj, "equipSlot", static_cast<double>(slot->GetFormID()));
+				}
+			}
+		}
+
 		// アイテム 1 つ分の項目を足す。
 		void ExtendEntry(RE::GFxMovieView* a_view, RE::GFxValue& a_obj, RE::TESForm* a_form, RE::InventoryEntryData* a_entry)
 		{
@@ -71,10 +108,21 @@ namespace skyshim::scaleform
 				SetNumber(a_obj, "soulSize", static_cast<double>(a_entry ? a_entry->GetSoulLevel() : *gem->currentSoul));
 			} else if (auto* potion = a_form->As<RE::AlchemyItem>()) {
 				SetNumber(a_obj, "flags", static_cast<double>(potion->data.flags.underlying()));
+				// 使用音(SkyUI は、飲み物と食べ物の区別に使う)。
+				if (potion->data.consumptionSound) {
+					RE::GFxValue sound;
+					a_view->CreateObject(&sound);
+					SetNumber(sound, "formType", static_cast<double>(potion->data.consumptionSound->GetFormType()));
+					SetNumber(sound, "formId", static_cast<double>(potion->data.consumptionSound->GetFormID()));
+					a_obj.SetMember("useSound", sound);
+				}
 			} else if (auto* book = a_form->As<RE::TESObjectBOOK>()) {
 				SetNumber(a_obj, "flags", static_cast<double>(book->data.flags.underlying()));
 				SetNumber(a_obj, "bookType", static_cast<double>(book->data.type.underlying()));
 			}
+
+			// ポーション、巻物、材料は、効果量や持続時間などの項目も足す。
+			AddMagicFields(a_obj, a_form);
 		}
 
 		bool Has(RE::GFxValue& a_obj, const char* a_name)
@@ -84,13 +132,24 @@ namespace skyshim::scaleform
 		}
 
 		// 一覧(ItemList)の全アイテムに項目を足して、SkyUI に再処理させる。
-		void ExtendItemList(RE::ItemList* a_list)
+		void ExtendItemList(RE::ItemList* a_list, const char* a_menuName)
 		{
 			if (!a_list || !a_list->view || a_list->items.empty()) return;
 			bool changed = false;
 			for (auto* item : a_list->items) {
 				if (!item || Has(item->obj, "formId")) continue;
 				auto* form = item->data.objDesc ? item->data.objDesc->object : nullptr;
+
+				// 診断(コンテナの分類が必要かの判断用): 分類の印(filterFlag)を、最初のいくつかだけログに出す。
+				static int s_logged = 0;
+				if (g_log && s_logged < 24 && std::strcmp(a_menuName, "ContainerMenu") == 0) {
+					RE::GFxValue flag;
+					item->obj.GetMember("filterFlag", &flag);
+					g_log("DIAG_FILTERFLAG menu=%s item=%s type=%d filterFlag=%d", a_menuName, item->data.GetName(),
+						form ? static_cast<int>(form->GetFormType()) : -1, flag.IsNumber() ? static_cast<int>(flag.GetNumber()) : -1);
+					++s_logged;
+				}
+
 				ExtendEntry(a_list->view.get(), item->obj, form, item->data.objDesc);
 				item->obj.SetMember("skyui_itemDataProcessed", RE::GFxValue(false));
 				changed = true;
@@ -98,6 +157,32 @@ namespace skyshim::scaleform
 			if (changed) a_list->root.Invoke("InvalidateData");
 		}
 
+
+		// 魔法メニュー(呪文、シャウト、パワー、効果)の 1 項目分。SKSE の MagicItemData に相当する。
+		void ExtendMagicEntry(RE::GFxMovieView* a_view, RE::GFxValue& a_obj, RE::TESForm* a_form)
+		{
+			if (!a_form || !a_obj.IsObject()) return;
+
+			SetNumber(a_obj, "formType", static_cast<double>(a_form->GetFormType()));
+			SetNumber(a_obj, "formId", static_cast<double>(a_form->GetFormID()));
+			SetKeywords(a_view, a_obj, a_form);
+
+			AddMagicFields(a_obj, a_form);
+		}
+
+		// 魔法メニューの一覧に項目を足して、SkyUI に再処理させる。
+		void ExtendMagicList(RE::MagicItemList* a_list)
+		{
+			if (!a_list || !a_list->view || a_list->items.empty()) return;
+			bool changed = false;
+			for (auto* item : a_list->items) {
+				if (!item || Has(item->obj, "formId")) continue;
+				ExtendMagicEntry(a_list->view.get(), item->obj, item->data.baseForm);
+				item->obj.SetMember("skyui_itemDataProcessed", RE::GFxValue(false));
+				changed = true;
+			}
+			if (changed) a_list->root.Invoke("InvalidateData");
+		}
 		// お気に入りメニューの一覧(FavoritesMenu::favorites と、ActionScript の entryList は、同じ順序)。
 		void ExtendFavorites(RE::FavoritesMenu* a_menu)
 		{
@@ -134,7 +219,8 @@ namespace skyshim::scaleform
 				case RE::UI_MESSAGE_TYPE::kInventoryUpdate:
 				case RE::UI_MESSAGE_TYPE::kUpdate:
 					if constexpr (std::is_same_v<Menu, RE::FavoritesMenu>) ExtendFavorites(static_cast<RE::FavoritesMenu*>(a_menu));
-					else ExtendItemList(static_cast<Menu*>(a_menu)->itemList);
+					else if constexpr (std::is_same_v<Menu, RE::MagicMenu>) ExtendMagicList(static_cast<RE::MagicMenu*>(a_menu)->itemList);
+					else ExtendItemList(static_cast<Menu*>(a_menu)->itemList, Menu::MENU_NAME.data());
 					break;
 				default: break;
 				}
@@ -158,6 +244,7 @@ namespace skyshim::scaleform
 		Hook<RE::BarterMenu>::Install(RE::VTABLE_BarterMenu[0], "BarterMenu");
 		Hook<RE::GiftMenu>::Install(RE::VTABLE_GiftMenu[0], "GiftMenu");
 		Hook<RE::FavoritesMenu>::Install(RE::VTABLE_FavoritesMenu[0], "FavoritesMenu");
+		Hook<RE::MagicMenu>::Install(RE::VTABLE_MagicMenu[0], "MagicMenu");
 		return true;
 	}
 }

@@ -183,3 +183,17 @@ The *ById / *ItemId functions rely on per-item IDs that SKSE's ExtendData provid
 - Finding: menus call skse.ExtendData / ExtendAlchemyCategories / EnableMapMenuMouseWheel inside InitExtensions(), which the engine runs while the menu is
   created, i.e. BEFORE our _global.skse injection, so those calls never reached us. InitExtensions must not be re-invoked (it registers callbacks), so
   extend data is treated as always enabled for the hooked menus. ForceContainerCategorization, ExtendAlchemyCategories, MagicMenu data: still TODO.
+
+## Audit of what SkyUI still expects from SKSE (2026-10-01)
+Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; then read the data setters to see which entry fields SKSE used to provide.
+- skse.* calls in the SWFs = the ones already known (no new API). Implemented: SendModEvent, GetMappedKey, GetLastControl/GetLastKeycode, AllowTextInput,
+  OpenMenu, Log, StoreIndices/LoadIndices, StartRemapMode, RequestActivePlayerEffects, EnableMapMenuMouseWheel (no-op). Not implemented: ShowOnMap,
+  ExtendAlchemyCategories, ForceContainerCategorization (see below); ExtendData is implemented through menu hooks, not through the call.
+- ExtendData now also covers: MagicMenu (spells/shouts/powers/effects: formType, formId, keywords, school, skillLevel, archetype, delivery, actorValue,
+  castType, magicType, magnitude, duration, area, spellType, equipSlot) and, for potions/scrolls/ingredients in item lists, the same magic fields plus
+  useSound (SkyUI uses it to tell food from drinks). SkyUI's fixSKSEExtendedObject() maps subType->school/weaponType and magicType->resistance, so both names are set.
+- Crafting menus (alchemy, smithing, enchanting, cooking ...): NOT extended. Each sub-menu keeps its own engine list and CommonLib offers no safe way to map
+  an AS entry to its form; guessing by name is unreliable. Alchemy still shows the SkyUI layout.
+- ForceContainerCategorization: undecided. A diagnostic logs DIAG_FILTERFLAG (menu, item, form type, filterFlag) for the first container items;
+  if every item has the same/zero filterFlag, categories in the container menu will not filter and the flag must be computed natively.
+- ShowOnMap: MapCamera internals are unknown in CommonLib (unk fields only), so no verified way to move the map camera. Left as a stub.
