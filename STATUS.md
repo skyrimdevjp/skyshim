@@ -202,3 +202,15 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - User confirmed in game: container categories filter the items correctly, the magic menu columns (school / level) and the potion details show.
   => ForceContainerCategorization is NOT needed (the engine already provides filterFlag); the diagnostic was removed. The call stays a harmless stub.
 - Remaining stubs/limits: ShowOnMap (map camera internals unknown), ExtendAlchemyCategories, crafting-menu extended data, ExtendForm (unused by SkyUI).
+
+## ShowOnMap, alchemy categories, crafting extended data (2026-10-02) - UNTESTED in game
+- Found: SKSE's own source (src\skse\...\Hooks_Scaleform.cpp, kept as a behaviour reference) shows how each was done, and CommonLib has the needed structures.
+- ShowOnMap(index): same as SKSE - marker index -> mapMarkers[index].ref -> RefHandleUIData message (UI_MESSAGE_TYPE::kUpdate) to "MapMenu".
+- Crafting extended data (src/scaleform/extend_data.cpp ExtendCrafting): hook of CraftingMenu::ProcessMessage; sub-menu type found by its vtable
+  (ConstructibleObjectMenu: recipes[i].constructibleObject->createdItem; SmithingMenu: recipes[i].item; AlchemyMenu: ingredientEntries[i].ingredient).
+  The AS entryList and the native array are assumed to be in the same order; if the counts differ nothing is added (log CRAFTING_COUNT_MISMATCH).
+  EnchantConstructMenu is not extended (SKSE did not extend it either).
+- ExtendAlchemyCategories: instead of rewriting the arguments of SetCategoriesList (SKSE), the category entries (named after the effects) are fixed after the
+  fact: the icon (beneficial / harmful / other) is set from the effect's archetype and detrimental flag, found by matching the effect name against the
+  ingredients' effects (FixAlchemyCategories). Assumes craftingMenu.InventoryLists.CategoriesList.entryList exists.
+- ForceContainerCategorization / ExtendData / ExtendAlchemyCategories / ExtendForm as skse.* calls are intentional no-ops now (the stub logging was removed).

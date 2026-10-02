@@ -41,15 +41,6 @@ namespace skyshim::scaleform
 			a_obj.SetMember(a_name, fn);
 		}
 
-		// No-op for API members SkyUI calls that are not implemented yet; logs the first call so gaps are visible.
-		void AddStub(RE::GFxMovieView* a_view, RE::GFxValue& a_obj, const char* a_name)
-		{
-			AddFn(a_view, a_obj, a_name, [a_name](FnHandler::Params&) {
-				static std::string seen;
-				if (seen.find(a_name) == std::string::npos) { seen += a_name; if (g_log) g_log("SKSE_JS_STUB_CALLED %s", a_name); }
-			});
-		}
-
 		void Inject(RE::GFxMovieView* a_view)
 		{
 			RE::GFxValue globals;
@@ -152,9 +143,29 @@ namespace skyshim::scaleform
 				}
 			});
 
-			for (const char* name : { "ShowOnMap",
-					 "ForceContainerCategorization", "ExtendData", "ExtendAlchemyCategories", "ExtendForm" })
-				AddStub(a_view, skse, name);
+			// skse.ShowOnMap(index): 場所検索で選んだマーカーへ、地図を動かす。
+			// SKSE と同じ方法: マップのマーカー(index 番目)の参照から、更新メッセージ(RefHandleUIData)を作って、マップメニューに送る。
+			AddFn(a_view, skse, "ShowOnMap", [](FnHandler::Params& p) {
+				if (p.argCount < 1 || !p.args[0].IsNumber()) return;
+				auto* ui = RE::UI::GetSingleton();
+				auto* queue = RE::UIMessageQueue::GetSingleton();
+				auto  menu = ui ? ui->GetMenu<RE::MapMenu>() : nullptr;
+				const auto index = static_cast<std::int64_t>(p.args[0].GetNumber());
+				if (!menu || !queue || index < 0 || index >= static_cast<std::int64_t>(menu->mapMarkers.size())) return;
+				const auto handle = menu->mapMarkers[static_cast<std::size_t>(index)].ref;
+				if (!handle) return;
+				if (auto* data = RE::UIMessageDataFactory::Create<RE::RefHandleUIData>()) {
+					data->data = handle;
+					queue->AddMessage(RE::MapMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kUpdate, data);
+				}
+			});
+
+			// 次の呼び出しは、何もしない。SkyUI がメニューの作成中(この注入より前)に呼ぶため、そもそもここへは届かない。
+			// 呼び出しの内容は、別の方法で実現している(extend_data.cpp): 拡張データ(ExtendData)と、錬金の分類(ExtendAlchemyCategories)は、
+			// メニューの ProcessMessage への割り込み。コンテナの分類(ForceContainerCategorization)は、エンジンが、すでに行っている。
+			// ExtendForm は、現行の SkyUI が使わない。
+			for (const char* name : { "ForceContainerCategorization", "ExtendData", "ExtendAlchemyCategories", "ExtendForm" })
+				AddFn(a_view, skse, name, [](FnHandler::Params&) {});
 
 			globals.SetMember("skse", skse);
 		}

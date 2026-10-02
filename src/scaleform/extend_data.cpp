@@ -11,7 +11,10 @@
 
 #include "RE/Skyrim.h"
 
+#include <array>
 #include <cstring>
+#include <string>
+#include <unordered_map>
 
 namespace skyshim::scaleform
 {
@@ -192,6 +195,128 @@ namespace skyshim::scaleform
 			if (changed) list.Invoke("InvalidateData");
 		}
 
+		// ---- クラフトメニュー(錬金、調理や鍛冶、など) ----
+
+		// オブジェクトの先頭の仮想関数の表が、a_ids[0] と同じか。クラフトのサブメニューの種類を見分けるのに使う。
+		template <std::size_t N>
+		bool IsType(const void* a_object, const std::array<REL::ID, N>& a_ids)
+		{
+			REL::Relocation<std::uintptr_t> vtbl{ a_ids[0] };
+			return *reinterpret_cast<const std::uintptr_t*>(a_object) == vtbl.address();
+		}
+
+		// 錬金の効果が、有益、有害、その他のどれか(SKSE の AlchemyCategoryArgs と同じ分け方)。
+		const char* AlchemyKind(const RE::EffectSetting* a_mgef)
+		{
+			using A = RE::EffectSetting::Archetype;
+			const bool detrimental = a_mgef->data.flags.any(RE::EffectSetting::EffectSettingData::Flag::kDetrimental);
+			switch (a_mgef->data.archetype) {
+			case A::kValueModifier:
+			case A::kDualValueModifier:
+			case A::kPeakValueModifier:
+				return detrimental ? "harmful" : "beneficial";
+			case A::kAbsorb:
+			case A::kCureDisease:
+			case A::kInvisibility:
+			case A::kCureParalysis:
+			case A::kCureAddiction:
+			case A::kCurePoison:
+			case A::kDispel:
+				return "beneficial";
+			case A::kFrenzy:
+			case A::kCalm:
+			case A::kDemoralize:
+			case A::kParalysis:
+				return "harmful";
+			default:
+				return "other";
+			}
+		}
+
+		// 錬金の分類(効果の一覧)のアイコンを、有益、有害、その他に直す。
+		// SKSE は、ゲームが SetCategoriesList に渡す引数の印を、書き換えていた。ここでは、渡されたあとの分類の項目を直す。
+		// 分類の項目の名前は、効果の名前なので、材料の効果の名前から、効果を探す。
+		void FixAlchemyCategories(RE::CraftingSubMenus::AlchemyMenu* a_menu)
+		{
+			RE::GFxValue lists, categories, entries;
+			if (!a_menu->craftingMenu.GetMember("InventoryLists", &lists) && !(a_menu->view && a_menu->view->GetVariable(&lists, "_root.Menu.InventoryLists"))) return;
+			if (!lists.GetMember("CategoriesList", &categories) || !categories.GetMember("entryList", &entries) || !entries.IsArray()) return;
+			const std::uint32_t count = entries.GetArraySize();
+			if (count < 2) return;
+
+			std::unordered_map<std::string, const RE::EffectSetting*> effects;
+			for (const auto& ingredient : a_menu->ingredientEntries) {
+				auto* item = ingredient.ingredient && ingredient.ingredient->object ? ingredient.ingredient->object->As<RE::IngredientItem>() : nullptr;
+				if (!item) continue;
+				for (auto* effect : item->effects) {
+					if (effect && effect->baseEffect && effect->baseEffect->GetFullName()) effects[effect->baseEffect->GetFullName()] = effect->baseEffect;
+				}
+			}
+
+			bool changed = false;
+			for (std::uint32_t i = 1; i < count; ++i) {  // 0 番目は、「材料」
+				RE::GFxValue entry, text;
+				if (!entries.GetElement(i, &entry) || Has(entry, "skyshim_alchemy") || !entry.GetMember("text", &text) || !text.IsString()) continue;
+				if (auto it = effects.find(text.GetString()); it != effects.end()) {
+					entry.SetMember("iconLabel", RE::GFxValue(AlchemyKind(it->second)));
+					entry.SetMember("skyshim_alchemy", RE::GFxValue(true));
+					changed = true;
+				}
+			}
+			if (changed) categories.Invoke("InvalidateData");
+		}
+
+		// クラフトのサブメニューの一覧に項目を足す。一覧の ActionScript の項目と、ゲーム側のレシピなどの配列は、同じ順序。
+		// 数が合わないときは、何もしない(誤った項目を足さないため)。
+		void ExtendCrafting(RE::CraftingMenu* a_menu)
+		{
+			auto* sub = a_menu ? a_menu->subMenu : nullptr;
+			if (!sub || !sub->view || !sub->entryList.IsArray()) return;
+			const std::uint32_t asCount = sub->entryList.GetArraySize();
+			if (asCount == 0) return;
+
+			using FormAndEntry = std::pair<RE::TESForm*, RE::InventoryEntryData*>;
+			auto apply = [&](std::size_t a_nativeCount, auto&& a_formAt) {
+				if (a_nativeCount != asCount) {
+					static bool s_logged = false;
+					if (!s_logged && g_log) {
+						s_logged = true;
+						g_log("CRAFTING_COUNT_MISMATCH native=%zu actionscript=%u (not extended)", a_nativeCount, asCount);
+					}
+					return;
+				}
+				bool changed = false;
+				for (std::uint32_t i = 0; i < asCount; ++i) {
+					RE::GFxValue entry;
+					if (!sub->entryList.GetElement(i, &entry) || Has(entry, "formId")) continue;
+					const FormAndEntry fe = a_formAt(i);
+					if (!fe.first) continue;
+					ExtendEntry(sub->view.get(), entry, fe.first, fe.second);
+					entry.SetMember("skyui_itemDataProcessed", RE::GFxValue(false));
+					changed = true;
+				}
+				if (changed) sub->itemList.Invoke("InvalidateData");
+			};
+
+			if (IsType(sub, RE::VTABLE_CraftingSubMenus__ConstructibleObjectMenu)) {
+				auto* m = static_cast<RE::CraftingSubMenus::ConstructibleObjectMenu*>(sub);
+				apply(m->recipes.size(), [&](std::uint32_t i) {
+					auto* recipe = m->recipes[i].constructibleObject;
+					return FormAndEntry{ recipe ? recipe->createdItem : nullptr, nullptr };
+				});
+			} else if (IsType(sub, RE::VTABLE_CraftingSubMenus__SmithingMenu)) {
+				auto* m = static_cast<RE::CraftingSubMenus::SmithingMenu*>(sub);
+				apply(m->recipes.size(), [&](std::uint32_t i) { return FormAndEntry{ m->recipes[i].item, nullptr }; });
+			} else if (IsType(sub, RE::VTABLE_CraftingSubMenus__AlchemyMenu)) {
+				auto* m = static_cast<RE::CraftingSubMenus::AlchemyMenu*>(sub);
+				apply(m->ingredientEntries.size(), [&](std::uint32_t i) {
+					auto* ingredient = m->ingredientEntries[i].ingredient;
+					return FormAndEntry{ ingredient ? ingredient->object : nullptr, ingredient };
+				});
+				FixAlchemyCategories(m);
+			}
+		}
+
 		// メニューごとの、割り込みの関数。元の ProcessMessage を呼んだあとで、項目を足す。
 		using ProcessMessage_t = RE::UI_MESSAGE_RESULTS (*)(RE::IMenu*, RE::UIMessage&);
 
@@ -210,6 +335,7 @@ namespace skyshim::scaleform
 				case RE::UI_MESSAGE_TYPE::kUpdate:
 					if constexpr (std::is_same_v<Menu, RE::FavoritesMenu>) ExtendFavorites(static_cast<RE::FavoritesMenu*>(a_menu));
 					else if constexpr (std::is_same_v<Menu, RE::MagicMenu>) ExtendMagicList(static_cast<RE::MagicMenu*>(a_menu)->itemList);
+					else if constexpr (std::is_same_v<Menu, RE::CraftingMenu>) ExtendCrafting(static_cast<RE::CraftingMenu*>(a_menu));
 					else ExtendItemList(static_cast<Menu*>(a_menu)->itemList);
 					break;
 				default: break;
@@ -235,6 +361,7 @@ namespace skyshim::scaleform
 		Hook<RE::GiftMenu>::Install(RE::VTABLE_GiftMenu[0], "GiftMenu");
 		Hook<RE::FavoritesMenu>::Install(RE::VTABLE_FavoritesMenu[0], "FavoritesMenu");
 		Hook<RE::MagicMenu>::Install(RE::VTABLE_MagicMenu[0], "MagicMenu");
+		Hook<RE::CraftingMenu>::Install(RE::VTABLE_CraftingMenu[0], "CraftingMenu");
 		return true;
 	}
 }
