@@ -750,3 +750,21 @@ stack:
 ### 同じ時に見つかった、`build_pex.ps1` の不具合
 - `-SkyUISource` のパスを書き間違えても(例: 末尾に `>` が入っていた)、エラーで止まらず、最後に「SkyUI のスクリプトは、すべてコンパイルできました」と出た。確認が実行されていないのに、成功と表示していた。
 - 修正: パス(`-Compiler`、`-VanillaSource`、`-SkyUISource`)の存在を、ビルドの前に確認し、存在しなければエラーで止める。確認した SkyUI のスクリプトの個数も、表示する。
+---
+
+### 問題 25. `Native function GetEquipType ... does not match existing signature on linked type SPELL`
+
+**症状**(`Papyrus.0.log`)
+- `error: Native function GetEquipType in empty state does not match existing signature on linked type SPELL. Function will not be bound.`
+- お気に入りのグループで、呪文を装備するときに、右手・左手の判定ができなくなるおそれがある(`Spell.GetEquipType()` が結び付かない)。
+
+**原因**
+- `Spell.GetEquipType()` は、`EquipSlot` 型のオブジェクトを返す。ゲーム本体は、`EquipSlot` という型名を知らないため、登録した関数の戻り値の型が、`.pex` の宣言と一致しなかった。
+- SKSE は、起動時に、フォームの種類(EquipSlot)に型名を結び付けている。Skyshim では、この登録が未実装だった(`STATUS.md` に、懸念として残していた)。
+
+**修正**
+- 関数を登録する前に、`a_vm->RegisterObjectType(FormType::EquipSlot, "EquipSlot")` を呼ぶ(`src\papyrus\equip_api.cpp`)。
+
+**確認**
+- `Papyrus.0.log` に、`GetEquipType ... does not match existing signature` が出なくなること。
+- お気に入りのグループに、呪文(右手・左手)を入れて、装備できること。

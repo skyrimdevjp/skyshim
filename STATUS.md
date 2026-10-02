@@ -244,3 +244,6 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - 1.7.104 Papyrus member natives: under MO2 the Papyrus log showed "Unable to call RegisterForModEvent - no native object bound to the script object" (static natives such as
   SKSE.GetVersionRelease worked). Cause: CommonLib's Internal::VirtualMachine::GetSingleton() (used by Variable::Unpack -> Object::Resolve) and SkyrimVM::SendAndRelayEvent read
   SkyrimVM::impl at the 1.5.97 offset (+0x200); on 1.7.104 it is +0x210, so the VM was null and Unpack<TESForm*> returned null. Added SkyrimVM::GetImpl() to CommonLib and used it there.
+- 1.7.104 (second PC, MO2): after enabling the "Skyshim Scripts" MOD, Papyrus.0.log shows no more "Cannot open store" / "Method ... not found" and "Registered SKY UI at MCM." appears.
+  Only Spell.GetEquipType remained: "Native function GetEquipType in empty state does not match existing signature on linked type SPELL" because the engine does not know the VM object type
+  "EquipSlot" (it was the open risk noted earlier; never implemented). Fix: a_vm->RegisterObjectType(FormType::EquipSlot, "EquipSlot") before registering the equip natives (equip_api.cpp).

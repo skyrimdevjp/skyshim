@@ -135,6 +135,11 @@ namespace skyshim::papyrus
 	bool RegisterEquip(RE::BSScript::IVirtualMachine* a_vm)
 	{
 		if (!a_vm) return false;
+		// Spell.GetEquipType() は EquipSlot 型のオブジェクトを返す。ゲーム本体は「EquipSlot」という型を知らないため、
+		// 関数を登録する前に、フォームの種類(EquipSlot)に、型の名前を結び付ける(SKSE も、起動時に同じことをしている)。
+		// 登録しないと、「Native function GetEquipType ... does not match existing signature」で、関数が結び付かない。
+		a_vm->RegisterObjectType(static_cast<RE::VMTypeID>(RE::FormType::EquipSlot), "EquipSlot");
+
 		a_vm->RegisterFunction("GetName", "Form", FormGetName);
 		a_vm->RegisterFunction("GetWeaponType", "Weapon", WeaponGetWeaponType);
 		a_vm->RegisterFunction("GetSlotMask", "Armor", ArmorGetSlotMask);
