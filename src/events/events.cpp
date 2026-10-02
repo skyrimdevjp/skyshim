@@ -2,6 +2,7 @@
 
 #include "mod_event.h"
 #include "../mainthread.h"
+#include "../vm_layout.h"
 
 #include "RE/Skyrim.h"
 
@@ -31,7 +32,7 @@ namespace skyshim::events
 		RE::BSScript::IVirtualMachine* VM()
 		{
 			auto* svm = RE::SkyrimVM::GetSingleton();
-			return svm ? svm->impl.get() : nullptr;
+			return skyshim::VMImpl(svm);
 		}
 
 		// 0 means "no handle" (invalid).

@@ -226,3 +226,13 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - Ask the user: which operation crashed (second load? closing a menu? exiting?), and whether it repeats.
 - Result (user, second PC): the same operation no longer crashes after the IsMenuOpen guard. Tools added: tools\addrlib_lookup.ps1 (RVA -> Address Library id) and
   tools\disasm.bat (dumpbin disassembly of SkyrimSE.exe). See docs\PROBLEMS.md problem 21.
+
+## Skyrim 1.7.104 (AE flavour, build-ae) - stages 1 and 2 (2026-10-02)
+- build-ae builds (preset ae-1-7-104). CommonLib patched (third_party\CommonLibSSE-NG-MIT\include\REL\ID.h): Address Library format 5 (versionlib-1-7-104-0.bin):
+  header = format(4) version(16) name(64 fixed) pointerSize(4) reserved(4) count(8, = max id + 1), then 4-byte offsets for id 1..count-1 (0 = absent).
+  Verified: RELOCATION_ID(514178, 400327) -> UI singleton valid (id-1 indexing).
+- Game exits at once (exit code 0) inside a Remote Desktop session (even without our DLL): the game asks GetSystemMetrics(SM_REMOTESESSION). skyshim.dll now hooks
+  that call (IAT) and answers 0 (REMOTE_SESSION_HIDE=PASS). This replaces hide_remote_desktop.dll (SKSE plugin) for our runtime.
+- SkyrimVM layout: impl is at +0x210 on 1.7.104 (CommonLib says +0x200). skyshim::VMImpl() in src\vm_layout.h. PAPYRUS_NATIVES_REGISTERED=PASS.
+- Result on 1.7.104 main menu: ADDRESS_LIBRARY, MENU_MANAGER, INPUT_MANAGER, PAPYRUS_VM_POINTER, PAPYRUS_NATIVES_REGISTERED, SKSE_JS_INJECT (36 creators),
+  7 x EXTEND_DATA_HOOK, EVENT_SINKS_INSTALLED all PASS. MAIN_THREAD_HOOK is still SKIPPED on AE (call site must be found).

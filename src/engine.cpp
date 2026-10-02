@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "events/events.h"
 #include "mainthread.h"
+#include "vm_layout.h"
 #include "scaleform/extend_data.h"
 #include "scaleform/inject.h"
 
@@ -41,18 +42,29 @@ namespace skyshim::engine
 
 	void WaitForSingletons(LogFn a_log)
 	{
-		bool vm = false, ui = false, input = false, natives = false, tr = false, dumped = false;
+		bool vm = false, ui = false, input = false, natives = false, tr = false, dumped = false, vmDumped = false;
 		std::chrono::steady_clock::time_point trTime{};
 		const auto start = std::chrono::steady_clock::now();
 		while (std::chrono::steady_clock::now() - start < std::chrono::seconds(300)) {
 			if (!ui && RE::UI::GetSingleton()) { ui = true; a_log("MENU_MANAGER=PASS (RE::UI)"); }
 			if (!input && RE::BSInputDeviceManager::GetSingleton()) { input = true; a_log("INPUT_MANAGER=PASS"); }
-			if (!vm && RE::SkyrimVM::GetSingleton() && RE::SkyrimVM::GetSingleton()->impl.get()) { vm = true; a_log("PAPYRUS_VM_POINTER=PASS"); }
+			if (!vm && skyshim::VMImpl(RE::SkyrimVM::GetSingleton())) { vm = true; a_log("PAPYRUS_VM_POINTER=PASS"); }
+
+			// 診断(1.7.x 用): VM の本体は有るのに impl が空のとき、周辺の値を一度だけ出し、メンバーの位置を調べる。
+			if (!vm && ui && input && !vmDumped && std::chrono::steady_clock::now() - start > std::chrono::seconds(20)) {
+				vmDumped = true;
+				const auto* p = reinterpret_cast<const std::uintptr_t*>(RE::SkyrimVM::GetSingleton());
+				a_log("VM_DIAG singleton=%p", static_cast<const void*>(p));
+				if (p) {
+					for (int i = 0; i < 0x300 / 8; ++i)
+						if (p[i] > 0x10000) a_log("VM_DIAG +0x%03X = %016llX", i * 8, static_cast<unsigned long long>(p[i]));
+				}
+			}
 
 			// Natives are registered as soon as the VM exists (scripts must not run before this).
 			if (!natives && ui && input && vm) {
 				natives = true;
-				const bool ok = skyshim::papyrus::RegisterAll(RE::SkyrimVM::GetSingleton()->impl.get());
+				const bool ok = skyshim::papyrus::RegisterAll(skyshim::VMImpl(RE::SkyrimVM::GetSingleton()));
 				a_log("PAPYRUS_NATIVES_REGISTERED=%s", ok ? "PASS" : "FAIL");
 			}
 

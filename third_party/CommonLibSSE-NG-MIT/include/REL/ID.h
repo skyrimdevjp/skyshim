@@ -158,8 +158,10 @@ namespace REL
 			void read(binary_io::file_istream& a_in)
 			{
 				const auto [format] = a_in.read<std::int32_t>();
+				_format = format;
 #ifdef SKYRIM_SUPPORT_AE
-				if (format != 2) {
+				// Skyshim による追加: 形式 5(Skyrim 1.7.x の Address Library)も読む。
+				if (format != 2 && format != 5) {
 #else
 				if (format != 1) {
 #endif
@@ -179,18 +181,31 @@ namespace REL
 				_version[2] = static_cast<std::uint16_t>(patch);
 				_version[3] = static_cast<std::uint16_t>(revision);
 
+				if (_format == 5) {
+					// 形式 5: 名前は 64 バイトの固定長(長さの値は無い)。続けて、ポインタの大きさ(4 バイト)、予約(4 バイト)、
+					// 件数(8 バイト。最大の ID + 1)。そのあとに、ID 1 から順に、4 バイトのアドレスが並ぶ(0 は、その ID が無いこと)。
+					a_in.seek_relative(64);
+					std::int32_t  reserved = 0;
+					std::uint64_t count = 0;
+					a_in.read(_pointerSize, reserved, count);
+					_addressCount = static_cast<std::int32_t>(count - 1);
+					return;
+				}
+
 				const auto [nameLen] = a_in.read<std::int32_t>();
 				a_in.seek_relative(nameLen);
 
 				a_in.read(_pointerSize, _addressCount);
 			}
 
+			[[nodiscard]] std::int32_t  format() const noexcept { return _format; }
 			[[nodiscard]] std::size_t   address_count() const noexcept { return static_cast<std::size_t>(_addressCount); }
 			[[nodiscard]] std::uint64_t pointer_size() const noexcept { return static_cast<std::uint64_t>(_pointerSize); }
 			[[nodiscard]] Version       version() const noexcept { return _version; }
 
 		private:
 			Version      _version;
+			std::int32_t _format{ 0 };
 			std::int32_t _pointerSize{ 0 };
 			std::int32_t _addressCount{ 0 };
 		};
@@ -262,6 +277,17 @@ namespace REL
 
 		void unpack_file(binary_io::file_istream& a_in, header_t a_header)
 		{
+			if (a_header.format() == 5) {
+				// Skyshim による追加: 形式 5 は、ID 1 から順に、4 バイトのアドレスが並ぶだけ。
+				std::uint64_t nextID = 1;
+				for (auto& mapping : _id2offset) {
+					std::uint32_t value = 0;
+					a_in.read(value);
+					mapping = { nextID++, value };
+				}
+				return;
+			}
+
 			std::uint8_t  type = 0;
 			std::uint64_t id = 0;
 			std::uint64_t offset = 0;

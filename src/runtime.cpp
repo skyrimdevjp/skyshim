@@ -149,8 +149,48 @@ namespace
 		return g_orig();
 	}
 
+	// リモートデスクトップの中では、ゲームは「リモートセッション」と判定して、すぐ終了する(終了コード 0)。
+	// ゲームが GetSystemMetrics(SM_REMOTESESSION) で調べているため、その問い合わせにだけ 0(ローカル)を返す。
+	using GetSystemMetrics_t = int(WINAPI*)(int);
+	GetSystemMetrics_t g_origGetSystemMetrics = nullptr;
+
+	int WINAPI Hook_GetSystemMetrics(int a_index)
+	{
+		if (a_index == SM_REMOTESESSION) return 0;
+		return g_origGetSystemMetrics(a_index);
+	}
+
+	// 実行ファイルの取り込み表の中の、指定した関数を差し替える。差し替え前の関数を返す(無ければ nullptr)。
+	void* PatchIAT(const char* a_dll, const char* a_func, void* a_new)
+	{
+		auto base = reinterpret_cast<BYTE*>(GetModuleHandleW(nullptr));
+		auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
+		auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
+		auto& dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+		if (!dir.VirtualAddress) return nullptr;
+		for (auto d = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(base + dir.VirtualAddress); d->Name; ++d) {
+			if (_stricmp(reinterpret_cast<char*>(base + d->Name), a_dll) != 0) continue;
+			auto thunk = reinterpret_cast<IMAGE_THUNK_DATA64*>(base + d->FirstThunk);
+			auto orig = reinterpret_cast<IMAGE_THUNK_DATA64*>(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk : d->FirstThunk));
+			for (; orig->u1.AddressOfData; ++orig, ++thunk) {
+				if (IMAGE_SNAP_BY_ORDINAL64(orig->u1.Ordinal)) continue;
+				auto ibn = reinterpret_cast<IMAGE_IMPORT_BY_NAME*>(base + orig->u1.AddressOfData);
+				if (strcmp(ibn->Name, a_func) != 0) continue;
+				DWORD old;
+				if (!VirtualProtect(&thunk->u1.Function, sizeof(void*), PAGE_READWRITE, &old)) return nullptr;
+				auto prev = reinterpret_cast<void*>(thunk->u1.Function);
+				thunk->u1.Function = reinterpret_cast<ULONGLONG>(a_new);
+				VirtualProtect(&thunk->u1.Function, sizeof(void*), old, &old);
+				return prev;
+			}
+		}
+		return nullptr;
+	}
+
 	bool HookIAT()
 	{
+		g_origGetSystemMetrics = static_cast<GetSystemMetrics_t>(PatchIAT("USER32.dll", "GetSystemMetrics", reinterpret_cast<void*>(&Hook_GetSystemMetrics)));
+		Log("REMOTE_SESSION_HIDE=%s", g_origGetSystemMetrics ? "PASS (GetSystemMetrics hooked)" : "SKIPPED (not imported)");
 		auto base = reinterpret_cast<BYTE*>(GetModuleHandleW(nullptr));
 		auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
 		auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
