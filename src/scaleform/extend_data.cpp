@@ -132,23 +132,13 @@ namespace skyshim::scaleform
 		}
 
 		// 一覧(ItemList)の全アイテムに項目を足して、SkyUI に再処理させる。
-		void ExtendItemList(RE::ItemList* a_list, const char* a_menuName)
+		void ExtendItemList(RE::ItemList* a_list)
 		{
 			if (!a_list || !a_list->view || a_list->items.empty()) return;
 			bool changed = false;
 			for (auto* item : a_list->items) {
 				if (!item || Has(item->obj, "formId")) continue;
 				auto* form = item->data.objDesc ? item->data.objDesc->object : nullptr;
-
-				// 診断(コンテナの分類が必要かの判断用): 分類の印(filterFlag)を、最初のいくつかだけログに出す。
-				static int s_logged = 0;
-				if (g_log && s_logged < 24 && std::strcmp(a_menuName, "ContainerMenu") == 0) {
-					RE::GFxValue flag;
-					item->obj.GetMember("filterFlag", &flag);
-					g_log("DIAG_FILTERFLAG menu=%s item=%s type=%d filterFlag=%d", a_menuName, item->data.GetName(),
-						form ? static_cast<int>(form->GetFormType()) : -1, flag.IsNumber() ? static_cast<int>(flag.GetNumber()) : -1);
-					++s_logged;
-				}
 
 				ExtendEntry(a_list->view.get(), item->obj, form, item->data.objDesc);
 				item->obj.SetMember("skyui_itemDataProcessed", RE::GFxValue(false));
@@ -220,7 +210,7 @@ namespace skyshim::scaleform
 				case RE::UI_MESSAGE_TYPE::kUpdate:
 					if constexpr (std::is_same_v<Menu, RE::FavoritesMenu>) ExtendFavorites(static_cast<RE::FavoritesMenu*>(a_menu));
 					else if constexpr (std::is_same_v<Menu, RE::MagicMenu>) ExtendMagicList(static_cast<RE::MagicMenu*>(a_menu)->itemList);
-					else ExtendItemList(static_cast<Menu*>(a_menu)->itemList, Menu::MENU_NAME.data());
+					else ExtendItemList(static_cast<Menu*>(a_menu)->itemList);
 					break;
 				default: break;
 				}

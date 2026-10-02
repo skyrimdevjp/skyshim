@@ -197,3 +197,8 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - ForceContainerCategorization: undecided. A diagnostic logs DIAG_FILTERFLAG (menu, item, form type, filterFlag) for the first container items;
   if every item has the same/zero filterFlag, categories in the container menu will not filter and the flag must be computed natively.
 - ShowOnMap: MapCamera internals are unknown in CommonLib (unk fields only), so no verified way to move the map camera. Left as a stub.
+
+## Container categorization decided (2026-10-02)
+- User confirmed in game: container categories filter the items correctly, the magic menu columns (school / level) and the potion details show.
+  => ForceContainerCategorization is NOT needed (the engine already provides filterFlag); the diagnostic was removed. The call stays a harmless stub.
+- Remaining stubs/limits: ShowOnMap (map camera internals unknown), ExtendAlchemyCategories, crafting-menu extended data, ExtendForm (unused by SkyUI).
