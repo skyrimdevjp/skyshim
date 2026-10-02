@@ -214,3 +214,13 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
   fact: the icon (beneficial / harmful / other) is set from the effect's archetype and detrimental flag, found by matching the effect name against the
   ingredients' effects (FixAlchemyCategories). Assumes craftingMenu.InventoryLists.CategoriesList.entryList exists.
 - ForceContainerCategorization / ExtendData / ExtendAlchemyCategories / ExtendForm as skse.* calls are intentional no-ops now (the stub logging was removed).
+
+## Crash after the second game load (2026-10-02, second PC)
+- ShowOnMap moves the map, alchemy categories and crafting data work (user). Then the game crashed: EXCEPTION C0000005 at SkyrimSE.exe+0x289D3C, right after a
+  second WidgetLoader.loadWidget (i.e. a second save load).
+- That address is inside the 32-byte function at +0x289D30 (Address Library id 19154): `mov rcx,[rcx+40h]; test; je; mov rax,[rcx]; jmp [rax+0E8h]`.
+  The jmp faulted: the object at this+0x40 had a dangling vtable pointer (use after free).
+- Suspected cause (not yet confirmed): our ProcessMessage hooks touch a menu's list/sub-menu after the original ProcessMessage returned, also while the menu is
+  being hidden/destroyed (save load). Mitigation: the hooks now run only while UI::IsMenuOpen(menu) is true. The crash logger now also prints return addresses
+  found on the stack (STACK[n] SkyrimSE.exe+0x... / skyshim.dll+0x...) so the next crash shows the call path.
+- Ask the user: which operation crashed (second load? closing a menu? exiting?), and whether it repeats.

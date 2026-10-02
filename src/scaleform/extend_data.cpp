@@ -328,6 +328,12 @@ namespace skyshim::scaleform
 			static RE::UI_MESSAGE_RESULTS Thunk(RE::IMenu* a_menu, RE::UIMessage& a_message)
 			{
 				const auto result = original(a_menu, a_message);
+
+				// メニューが、実際に開いている間だけ、項目を足す。閉じる最中や、セーブのロードで破棄されるときは、
+				// 一覧やサブメニューが解放ずみのことがあり、触るとゲームが落ちる。
+				auto* ui = RE::UI::GetSingleton();
+				if (!ui || !ui->IsMenuOpen(Menu::MENU_NAME)) return result;
+
 				switch (a_message.type.get()) {
 				case RE::UI_MESSAGE_TYPE::kShow:
 				case RE::UI_MESSAGE_TYPE::kReshow:

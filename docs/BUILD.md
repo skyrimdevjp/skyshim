@@ -46,6 +46,17 @@ cl
 
 `cl` が `Version 19.44.xxxxx` と表示されることを確認する。ビルドのたびに、この手順を行う。
 
+> **毎回、`-vcvars_ver=14.44` を付けた `vcvars64.bat` を、実行してからビルドする。** 付けずに(既定のツールセットで)ビルドすると、`__std_find_last_trivial_1` や `__std_remove_8` などの未解決のシンボルで、リンクに失敗する(`PROBLEMS.md` の問題 16)。
+>
+> 毎回、同じ手順になるように、次のような `build.bat` を作っておくと、間違いが減る。
+>
+> ```
+> @echo off
+> call "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat" -vcvars_ver=14.44
+> cd /d <skyshim のフォルダ>
+> cmake --build build-se
+> ```
+
 ### 2.2 設定とビルド
 
 ```

@@ -1,6 +1,7 @@
 // skyshim runtime entry. Phase 2: load before Papyrus / Scaleform; Phase 3 gates start here.
 #include <windows.h>
 #include <shlobj.h>
+#include <psapi.h>
 #include <share.h>
 #include <cstdarg>
 #include <cstdio>
@@ -12,6 +13,7 @@
 
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "psapi.lib")
 
 namespace
 {
@@ -51,6 +53,21 @@ namespace
 			GetModuleFileNameA(mod, name, MAX_PATH);
 		Log("EXCEPTION code=%08lX addr=%p module=%s +0x%llX thread=%lu", code, addr, name,
 			static_cast<unsigned long long>(reinterpret_cast<const char*>(addr) - reinterpret_cast<const char*>(mod)), GetCurrentThreadId());
+
+		// 呼び出しの経路を調べるため、スタックの上のほうから、ゲーム本体と Skyshim の中を指す値(戻り先)を、ログに出す。
+		const auto  game = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+		const auto  self = reinterpret_cast<std::uintptr_t>(g_self);
+		MODULEINFO  gi{}, si{};
+		GetModuleInformation(GetCurrentProcess(), reinterpret_cast<HMODULE>(game), &gi, sizeof(gi));
+		GetModuleInformation(GetCurrentProcess(), g_self, &si, sizeof(si));
+		const auto* stack = reinterpret_cast<const std::uintptr_t*>(a_ep->ContextRecord->Rsp);
+		int logged = 0;
+		for (int i = 0; i < 256 && logged < 24; ++i) {
+			std::uintptr_t v = 0;
+			__try { v = stack[i]; } __except (EXCEPTION_EXECUTE_HANDLER) { break; }
+			if (v >= game && v < game + gi.SizeOfImage) { Log("  STACK[%d] SkyrimSE.exe+0x%llX", i, static_cast<unsigned long long>(v - game)); ++logged; }
+			else if (v >= self && v < self + si.SizeOfImage) { Log("  STACK[%d] skyshim.dll+0x%llX", i, static_cast<unsigned long long>(v - self)); ++logged; }
+		}
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
 
