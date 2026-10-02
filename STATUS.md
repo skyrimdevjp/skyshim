@@ -236,3 +236,6 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - SkyrimVM layout: impl is at +0x210 on 1.7.104 (CommonLib says +0x200). skyshim::VMImpl() in src\vm_layout.h. PAPYRUS_NATIVES_REGISTERED=PASS.
 - Result on 1.7.104 main menu: ADDRESS_LIBRARY, MENU_MANAGER, INPUT_MANAGER, PAPYRUS_VM_POINTER, PAPYRUS_NATIVES_REGISTERED, SKSE_JS_INJECT (36 creators),
   7 x EXTEND_DATA_HOOK, EVENT_SINKS_INSTALLED all PASS. MAIN_THREAD_HOOK is still SKIPPED on AE (call site must be found).
+- 1.7.104 main-thread hook: ID 36564 + 0xC3D (call 0x141082490 followed by `mov rcx,[rip+x]`), found by disassembly (tools\disasm.bat) by matching the 1.5.97 shape
+  (three no-argument calls, the last one hooked). The earlier guess ID 36564 + 0xC26 (known 1.6.x offset) is a call with arguments on 1.7.104 and crashed.
+  MAIN_THREAD_HOOK=PASS; game stays up at the main menu with all hooks installed. Next: in-game test of SkyUI through MO2 (mod_ae17).

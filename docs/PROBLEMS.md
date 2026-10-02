@@ -680,3 +680,22 @@ jmp [rax+0E8h]        ← ここで落ちた
 
 **再発したとき**
 - `EXCEPTION` の行と、続く `STACK[...]` の行から、どこから呼ばれたかを調べる。`STACK[n] skyshim.dll+0x...` があれば、Skyshim の中が経路に含まれる(`skyshim.pdb` で、関数名を引ける)。
+---
+
+### 問題 22. Skyrim 1.7.104 で、メインスレッドのフック位置が 1.6 系と違う
+
+**症状**
+- 1.6 系で知られている位置(ID 36564 + 0xC26)にフックすると、ゲームがクラッシュした(`EXCEPTION` の次に `STACK[n] skyshim.dll+...` が続く)。
+
+**原因**
+- 1.7.104 では、その位置の `call` は、引数を取る別の関数(`call 0x140CDD7E0`、`rcx` に変数のアドレス、`edx` に 0)だった。フックは、引数なしで元の関数を呼ぶため、クラッシュした。
+
+**修正**
+- 1.5.97 で、フックしている呼び出しの形(引数なしの `call` が 3 つ並び、最後がフックの対象。直後が `mov rcx,[グローバル変数]`)と同じものを、1.7.104 の逆アセンブル(`tools\disasm.bat`)から探した。
+- 見つかった位置: ID 36564 + 0xC3D(`call 0x141082490`)。
+- 取り違えを防ぐため、`call`(E8)であることと、直後が `48 8B 0D`(`mov rcx,[rip+x]`)であることを、実行時に検査する(`src\mainthread.cpp`)。
+
+**同じ版で見つかった、ほかの違い**
+- `SkyrimVM::impl` は +0x210(CommonLib の定義は +0x200)。`src\vm_layout.h`。
+- リモートデスクトップの中では、ゲームが `GetSystemMetrics(SM_REMOTESESSION)` で判定して終了する。`skyshim.dll` が、その問い合わせに 0 を返す(`src\runtime.cpp`)。
+- Address Library は形式 5(`versionlib-1-7-104-0.bin`)。CommonLib の `REL\ID.h` に、読み込みを追加した。
