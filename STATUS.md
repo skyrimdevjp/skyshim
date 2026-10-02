@@ -224,3 +224,5 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
   being hidden/destroyed (save load). Mitigation: the hooks now run only while UI::IsMenuOpen(menu) is true. The crash logger now also prints return addresses
   found on the stack (STACK[n] SkyrimSE.exe+0x... / skyshim.dll+0x...) so the next crash shows the call path.
 - Ask the user: which operation crashed (second load? closing a menu? exiting?), and whether it repeats.
+- Result (user, second PC): the same operation no longer crashes after the IsMenuOpen guard. Tools added: tools\addrlib_lookup.ps1 (RVA -> Address Library id) and
+  tools\disasm.bat (dumpbin disassembly of SkyrimSE.exe). See docs\PROBLEMS.md problem 21.

@@ -635,3 +635,48 @@ EXCEPTION code=C0000005 addr=... module=...\Data\SKSE\Plugins\EngineFixes.dll +0
 
 **補足**
 - コンパイラの診断メッセージは、標準エラー出力に出る。`$ErrorActionPreference = 'Stop'` のままだと、正常な診断も実行時エラーになるため、その部分だけ `'Continue'` にしている。
+
+---
+
+### 問題 21. セーブのロードの直後に、ゲーム本体の中でクラッシュする
+
+**症状**
+- 鍛冶などでクラフトメニューを使ったあと、セーブをロードし直すと、ゲームが落ちた。
+- `skyshim.log` の末尾:
+
+```
+EXCEPTION code=C0000005 addr=... module=...\SkyrimSE.exe +0x289D3C
+```
+
+**調べ方**(クラッシュの場所が、`SkyrimSE.exe +0x...` のときの手順)
+1. Address Library で、アドレスを含む関数を求める。`tools\addrlib_lookup.ps1` を使う。
+
+```
+.\tools\addrlib_lookup.ps1 -Bin "<...>\version-1-5-97-0.bin" -Rva 0x289D3C
+→ nearest id=19154 offset=0x289D30 (+0xC) | next id=19155 offset=0x289D50
+```
+
+2. `SkyrimSE.exe` を逆アセンブルして(`tools\disasm.bat`)、その関数の命令を読む。この例では、関数が 32 バイトしかなく、次の内容だった。
+
+```
+mov rcx,[rcx+40h]     ; this の +0x40 にあるオブジェクト
+test rcx,rcx / je ... ; 無ければ false
+mov rax,[rcx]         ; そのオブジェクトの仮想関数の表
+jmp [rax+0E8h]        ← ここで落ちた
+```
+
+3. 「仮想関数の表の中身が壊れている」ことから、**解放ずみのオブジェクトを使った**と判断した。
+
+**原因(状況からの推定。確定ではない)**
+- 拡張データの割り込み(`src\scaleform\extend_data.cpp`)は、メニューの処理が終わったあとで、そのメニューの一覧やサブメニューを触る。
+- メニューが閉じる最中や、セーブのロードで破棄される最中に、解放ずみの一覧やサブメニューを触った。
+
+**修正**
+- 割り込みを、`UI::IsMenuOpen(メニュー名)` が真の間だけ動かすようにした。
+- クラッシュのログに、スタックの中のゲーム本体と Skyshim を指す戻り先(`STACK[n] SkyrimSE.exe+0x...`)を、出すようにした(`src\runtime.cpp` の `CrashLogger`)。
+
+**確認**
+- 同じ操作(クラフトのあと、セーブをロードし直す)で、落ちなくなった。
+
+**再発したとき**
+- `EXCEPTION` の行と、続く `STACK[...]` の行から、どこから呼ばれたかを調べる。`STACK[n] skyshim.dll+0x...` があれば、Skyshim の中が経路に含まれる(`skyshim.pdb` で、関数名を引ける)。
