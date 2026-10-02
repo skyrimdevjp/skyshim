@@ -241,3 +241,6 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
   MAIN_THREAD_HOOK=PASS; game stays up at the main menu with all hooks installed. Next: in-game test of SkyUI through MO2 (mod_ae17).
 - 1.7.104 translations: CommonLib's GetCachedString ID (AE 69188) is absent (offset 0) in versionlib-1-7-104-0.bin and the call jumped to SkyrimSE.exe+0 under MO2 (plugins with
   translation files enabled). The equivalent wide-string function is ID 443410 (RVA 0xEB1D20; found by matching the 1.5.97 prologue). translation.cpp::GetCachedStringFor picks the ID per flavour.
+- 1.7.104 Papyrus member natives: under MO2 the Papyrus log showed "Unable to call RegisterForModEvent - no native object bound to the script object" (static natives such as
+  SKSE.GetVersionRelease worked). Cause: CommonLib's Internal::VirtualMachine::GetSingleton() (used by Variable::Unpack -> Object::Resolve) and SkyrimVM::SendAndRelayEvent read
+  SkyrimVM::impl at the 1.5.97 offset (+0x200); on 1.7.104 it is +0x210, so the VM was null and Unpack<TESForm*> returned null. Added SkyrimVM::GetImpl() to CommonLib and used it there.

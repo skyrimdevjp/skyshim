@@ -699,3 +699,31 @@ jmp [rax+0E8h]        ← ここで落ちた
 - `SkyrimVM::impl` は +0x210(CommonLib の定義は +0x200)。`src\vm_layout.h`。
 - リモートデスクトップの中では、ゲームが `GetSystemMetrics(SM_REMOTESESSION)` で判定して終了する。`skyshim.dll` が、その問い合わせに 0 を返す(`src\runtime.cpp`)。
 - Address Library は形式 5(`versionlib-1-7-104-0.bin`)。CommonLib の `REL\ID.h` に、読み込みを追加した。
+---
+
+### 問題 23. Skyrim 1.7.104 で、Papyrus の「オブジェクトに紐づく関数」だけが失敗する
+
+**症状**
+- `Papyrus.0.log` に、次のエラーが出る。`SKSE.GetVersionRelease` のような静的な関数は、呼べている。
+
+```
+error: Unable to call RegisterForModEvent - no native object bound to the script object, or object is of incorrect type
+stack:
+    [SKI_WidgetManagerInstance (...)].SKI_WidgetManager.RegisterForModEvent() - "<native>"
+```
+
+**調べ方**
+- `skyshim.log` には `EXCEPTION` が出ない(クラッシュではない)。ゲームの Papyrus ログ(`Documents\My Games\Skyrim Special Edition\Logs\Script\Papyrus.0.log`)を見る。
+- このエラーは、`NativeFunction::MarshallAndDispatch` で `Variable::Unpack<TESForm*>()` が null を返したときに出る(`include\RE\N\NativeFunction.h`)。
+- `Unpack` は `Object::Resolve` を経て、`Internal::VirtualMachine::GetSingleton()` を使う。これは `SkyrimVM::impl` を読む(`src\RE\V\VirtualMachine.cpp`)。
+
+**原因**
+- `SkyrimVM::impl` の位置は、1.5.97 では +0x200、1.7.104 では +0x210(問題 22 の続き。実機で、vtable の位置から確認した)。
+- CommonLib の `GetSingleton()` は +0x200 を読んでいたため、1.7.104 では VM が null になり、フォームを取り出せなかった。
+
+**修正**
+- CommonLib の `SkyrimVM` に `GetImpl()` を追加し、AE のビルドでは +0x210 を読む。`VirtualMachine::GetSingleton()` と `SkyrimVM::SendAndRelayEvent` を、これを使うように直した。
+- Skyshim 側の `src\vm_layout.h` も、`GetImpl()` を使う。
+
+**再発したとき・ほかの版で同じ種類の問題を疑うとき**
+- CommonLib のクラスのメンバーを、直接読む処理は、版が変わると同じようにずれる可能性がある。ゲームのメモリ(`VM_DIAG` のように、ポインタを一覧する診断)と、1.5.97 の配置を比べて、ずれの大きさを確かめる。

@@ -212,6 +212,17 @@ namespace RE
 
 		static SkyrimVM* GetSingleton();
 
+		// Skyshim による追加: impl の取り出し。1.6 以降(1.7.104 で実機確認)は、メンバー全体が 0x10 後ろにずれ、impl は +0x210 にある。
+		// 下の「members」の位置は 1.5.97 のもの。AE 向けのビルドでは、impl を直接読まず、これを使うこと。
+		[[nodiscard]] BSScript::IVirtualMachine* GetImpl()
+		{
+#if defined(SKYRIM_SUPPORT_AE)
+			return *reinterpret_cast<BSScript::IVirtualMachine**>(reinterpret_cast<std::uintptr_t>(this) + 0x210);
+#else
+			return impl.get();
+#endif
+		}
+
 		bool QueuePostRenderCall(const BSTSmartPointer<SkyrimScript::DelayFunctor>& a_functor);
 		void RelayEvent(VMHandle handle, BSFixedString* event, BSScript::IFunctionArguments* args, ISendEventFilter* optionalFilter);
 		void SendAndRelayEvent(VMHandle handle, BSFixedString* event, BSScript::IFunctionArguments* args, ISendEventFilter* optionalFilter);
