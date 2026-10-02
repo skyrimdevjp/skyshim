@@ -27,6 +27,19 @@ namespace skyshim::engine
 			return L"ENGLISH";
 		}
 
+		// 大文字と小文字の違いを保ったまま文字列を登録する関数(BSScaleformTranslator::GetCachedString)。
+		// 1.7.104 の Address Library では、CommonLib が使う ID(69188)が未登録(アドレス 0)で、呼ぶと落ちる。
+		// 同じ処理の関数は ID 443410(逆アセンブルで、1.5.97 のものと同じ形を探して特定した)。
+		void GetCachedStringFor(wchar_t** a_out, wchar_t* a_buf)
+		{
+#if defined(SKYRIM_SUPPORT_AE)
+			static REL::Relocation<void(wchar_t**, wchar_t*, std::uint32_t)> func{ REL::ID(443410) };
+			func(a_out, a_buf, 0);
+#else
+			RE::BSScaleformTranslator::GetCachedString(a_out, a_buf, 0);
+#endif
+		}
+
 		void (*g_log)(const char*, ...) = nullptr;
 		int g_failed = 0;
 
@@ -58,7 +71,7 @@ namespace skyshim::engine
 				auto cached = [](const std::wstring& a_text) {
 					std::wstring buf = a_text;  // GetCachedString takes a writable buffer
 					wchar_t*     out = nullptr;
-					RE::BSScaleformTranslator::GetCachedString(&out, buf.data(), 0);
+					GetCachedStringFor(&out, buf.data());
 					// Wrap the pointer without going through the pool constructor. A copy takes its own reference; the wrapper
 					// itself is deliberately never destroyed (worst case: one leaked reference).
 					auto* wrapper = static_cast<RE::BSFixedStringW*>(::operator new(sizeof(RE::BSFixedStringW)));

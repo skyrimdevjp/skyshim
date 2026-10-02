@@ -239,3 +239,5 @@ Method: decompiled all 48 SkyUI SWFs (FFDec) and grepped every `skse.` call; the
 - 1.7.104 main-thread hook: ID 36564 + 0xC3D (call 0x141082490 followed by `mov rcx,[rip+x]`), found by disassembly (tools\disasm.bat) by matching the 1.5.97 shape
   (three no-argument calls, the last one hooked). The earlier guess ID 36564 + 0xC26 (known 1.6.x offset) is a call with arguments on 1.7.104 and crashed.
   MAIN_THREAD_HOOK=PASS; game stays up at the main menu with all hooks installed. Next: in-game test of SkyUI through MO2 (mod_ae17).
+- 1.7.104 translations: CommonLib's GetCachedString ID (AE 69188) is absent (offset 0) in versionlib-1-7-104-0.bin and the call jumped to SkyrimSE.exe+0 under MO2 (plugins with
+  translation files enabled). The equivalent wide-string function is ID 443410 (RVA 0xEB1D20; found by matching the 1.5.97 prologue). translation.cpp::GetCachedStringFor picks the ID per flavour.
