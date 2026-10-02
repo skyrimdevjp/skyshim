@@ -727,3 +727,26 @@ stack:
 
 **再発したとき・ほかの版で同じ種類の問題を疑うとき**
 - CommonLib のクラスのメンバーを、直接読む処理は、版が変わると同じようにずれる可能性がある。ゲームのメモリ(`VM_DIAG` のように、ポインタを一覧する診断)と、1.5.97 の配置を比べて、ずれの大きさを確かめる。
+---
+
+### 問題 24. `.pex` を作っても、Papyrus のログに `Cannot open store for class "SKSE"` が出続ける
+
+**症状**(`Papyrus.0.log`)
+- `Cannot open store for class "SKSE" / "UI" / "StringUtil" / "EquipSlot", missing file?`
+- `Native static function GetVersion could find no matching static function on linked type SKSE. Function will not be bound.`(`UI`、`Utility`、`Form`、`Actor` なども同様)
+- `Method RegisterForModEvent not found on SKI_...`、`Static function GetINIInt not found on object utility`
+- `skyshim.log` は、`PAPYRUS_NATIVES_REGISTERED=PASS` など、すべて PASS で、`EXCEPTION` も無い。
+
+**原因**
+- Skyshim が登録したネイティブ関数は、宣言のある `.pex`(`SKSE.pex`、`UI.pex`、`Form.pex` など)が、ゲームから見えていないと、結び付かない。
+- `.pex` を作っても、その MOD が MO2 で有効になっていなければ、ゲームには見えない。
+- 1.7.104 の確認では、`build_pex.ps1` で作った MOD を、MO2 で有効にする前の状態だった。
+
+**確認の手順**
+1. MO2 の右ペインの「データ」タブで、`Scripts` の中に `SKSE.pex`、`UI.pex` があり、「MOD」の列が `Skyshim Scripts` になっているか。
+2. 無ければ、MOD の一覧を更新(F5)し、`Skyshim Scripts` にチェックを入れる。新しく作った MOD は、チェックが外れた状態で、一覧の末尾に出る。
+3. `Papyrus.0.log` に、`Cannot open store for class "SKSE"` が出なくなっているか。
+
+### 同じ時に見つかった、`build_pex.ps1` の不具合
+- `-SkyUISource` のパスを書き間違えても(例: 末尾に `>` が入っていた)、エラーで止まらず、最後に「SkyUI のスクリプトは、すべてコンパイルできました」と出た。確認が実行されていないのに、成功と表示していた。
+- 修正: パス(`-Compiler`、`-VanillaSource`、`-SkyUISource`)の存在を、ビルドの前に確認し、存在しなければエラーで止める。確認した SkyUI のスクリプトの個数も、表示する。

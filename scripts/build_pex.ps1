@@ -19,6 +19,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# パスの書き間違い(余計な文字など)は、ビルドを始める前に止める。
+foreach ($pair in @(@('-Compiler', $Compiler), @('-VanillaSource', $VanillaSource))) {
+    if (-not (Test-Path -LiteralPath $pair[1])) { throw "$($pair[0]) のパスが存在しません: $($pair[1])" }
+}
+if ($SkyUISource -ne "" -and -not (Test-Path -LiteralPath $SkyUISource -PathType Container)) {
+    throw "-SkyUISource のパスが存在しません: $SkyUISource"
+}
+
 # Papyrus のコンパイラは、日本語(UTF-8)のコメントを別の文字コードとして読み、直後の宣言を飲み込んでしまう。
 # このリポジトリのソースのコメントは日本語なので、コンパイル用の一時コピーからは、コメントだけの行を取り除く。
 function Remove-Comments([string] $path) {
@@ -78,9 +86,13 @@ try {
         $check = Join-Path $work "skyui_check"
         New-Item -ItemType Directory -Force $check | Out-Null
         $bad = 0
+        $checked = 0
         # コンパイラは、診断メッセージを標準エラー出力に書く。ここでは、それを実行時エラーとして扱わない。
         $ErrorActionPreference = 'Continue'
-        foreach ($f in Get-ChildItem $SkyUISource -Filter *.psc) {
+        $sources = @(Get-ChildItem -LiteralPath $SkyUISource -Filter *.psc)
+        if ($sources.Count -eq 0) { throw "-SkyUISource に .psc がありません: $SkyUISource" }
+        foreach ($f in $sources) {
+            $checked++
             $msg = & $Compiler $f.FullName "-f=$flags" "-i=$work;$SkyUISource;$VanillaSource" "-o=$check" 2>&1
             if (-not (Test-Path (Join-Path $check "$($f.BaseName).pex"))) {
                 $bad++
@@ -89,7 +101,7 @@ try {
             }
         }
         if ($bad -gt 0) { throw "SkyUI のスクリプト $bad 個がコンパイルできません(足りない SKSE の関数があります)" }
-        Write-Host "SkyUI のスクリプトは、すべてコンパイルできました。"
+        Write-Host "SkyUI のスクリプト $checked 個は、すべてコンパイルできました。"
     }
 }
 finally {
